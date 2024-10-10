@@ -12,6 +12,8 @@ class AnchoredIndicator:
         Parameters:
         - indicator_name: str, the name of the vectorbt indicator.
         - anchor: str, 'D' for day, 'H' for hour, 'T' for minute (default is 'D').
+           Any valid frequency string ('D', 'H', 'T', 'W', etc.). can be used as it uses pd.Grouper(freq=anchor)
+            see https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases
         """
         self.indicator_name = indicator_name
         self.indicator = vbt.indicator(indicator_name)
@@ -24,20 +26,20 @@ class AnchoredIndicator:
         
         Parameters:
         - data: pd.Series or pd.DataFrame, the input data series or dataframe (e.g., close prices).
-        - anchor: str, 'D' for day, 'H' for hour, 'T' for minute (default is 'D').
+        - anchor: str, 'D' for day, 'H' for hour, 'T' for minute (default is 'D'). Override for anchor on the instance.
+            Any valid frequency string ('D', 'H', 'T', 'W', etc.). can be used as it uses pd.Grouper(freq=anchor)
+            see https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases
         - *args, **kwargs: Arguments and keyword arguments passed to the indicator.
         """
 
         if anchor is None:
             anchor = self.anchor
 
-        # Group by the specified frequency
-        if anchor == 'D':
-            grouped_data = data.groupby(data.index.date)
-        elif anchor in ['H', 'T']:
+        # Use pd.Grouper for splitting by any valid frequency string
+        try:
             grouped_data = data.groupby(pd.Grouper(freq=anchor))
-        else:
-            raise ValueError("Invalid anchor value. Use 'D' (day), 'H' (hour), or 'T' (minute).")
+        except ValueError as e:
+            raise ValueError(f"Invalid anchor value: {anchor}. Check pandas Grouper frequencies.") from e
 
         # Run the indicator function for each group and concatenate the results
         results = []
