@@ -44,6 +44,8 @@ class AnchoredIndicator:
         # Run the indicator function for each group and concatenate the results
         results = []
         for date, group in grouped_data:
+            if group.empty:
+                continue
             # Run the indicator for each group's data
             result = self.indicator.run(group, *args, **kwargs)
             results.append(result)
