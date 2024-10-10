@@ -11,8 +11,8 @@ class AnchoredIndicator:
         
         Parameters:
         - indicator_name: str, the name of the vectorbt indicator.
-        - anchor: str, 'D' for day, 'H' for hour, 'T' for minute (default is 'D').
-           Any valid frequency string ('D', 'H', 'T', 'W', etc.). can be used as it uses pd.Grouper(freq=anchor)
+        - anchor: str, 'D' for day, 'h' for hour, 'min' for minute (default is 'D').
+           Any valid frequency string ('D', 'h', 'min', 'W', etc.). can be used as it uses pd.Grouper(freq=anchor)
             see https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases
         """
         self.indicator_name = indicator_name
@@ -26,8 +26,8 @@ class AnchoredIndicator:
         
         Parameters:
         - data: pd.Series or pd.DataFrame, the input data series or dataframe (e.g., close prices).
-        - anchor: str, 'D' for day, 'H' for hour, 'T' for minute (default is 'D'). Override for anchor on the instance.
-            Any valid frequency string ('D', 'H', 'T', 'W', etc.). can be used as it uses pd.Grouper(freq=anchor)
+        - anchor: str, 'D' for day, 'h' for hour, 'min' for minute (default is 'D'). Override for anchor on the instance.
+            Any valid frequency string ('D', 'h', 'min', 'W', etc.). can be used as it uses pd.Grouper(freq=anchor)
             see https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases
         - *args, **kwargs: Arguments and keyword arguments passed to the indicator.
         """

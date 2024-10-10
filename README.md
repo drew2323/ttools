@@ -13,7 +13,7 @@ Example usage:
 ```python
 from ttools import AnchoredIndicator
 
-mom_standard = vbt.indicator("talib:MOM").run(t1data.data["BAC"].close)
-mom_anchored_d = AnchoredIndicator("talib:MOM", anchor='D').run(t1data.data["BAC"].close)
+mom = vbt.indicator("talib:MOM").run(t1data.data["BAC"].close, timeperiod=10, skipna=True) #standard indicator
+mom_anch_d = AnchoredIndicator("talib:MOM", anchor='D').run(t1data.data["BAC"].close, timeperiod=10, skipna=True) #anchored to D
 ```
 
