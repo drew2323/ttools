@@ -1,5 +1,55 @@
 import pandas as pd
 import vectorbtpro as vbt
+import pandas_market_calendars as mcal
+from typing import Any
+
+def create_mask_from_window(entries: Any, entry_window_opens:int, entry_window_closes:int):
+    """
+    Accepts entries and window range (number of minutes from market start) and returns boolean mask denoting 
+     entries within the window.
+
+    Parameters
+    ----------
+    entries : pd.Series/pd:DataFrame
+        Entries to be masked.
+    entry_window_opens : int
+        Number of minutes from market start to open the window.
+    entry_window_closes : int
+        Number of minutes from market start to close the window.
+
+    Returns
+    -------
+    type of entries
+    """
+    # Get the NYSE calendar
+    nyse = mcal.get_calendar("NYSE")
+    # Get the market hours data
+    market_hours = nyse.schedule(start_date=entries.index[0].to_pydatetime(), end_date=entries.index[-1].to_pydatetime(), tz=nyse.tz)
+
+    market_hours =market_hours.tz_localize(nyse.tz)
+
+    # Use merge_asof to align entries with the nearest market_open in market_hours
+    merged = pd.merge_asof(
+        entries, 
+        market_hours[['market_open', 'market_close']], 
+        left_index=True, 
+        right_index=True, 
+        direction='backward'
+    )
+
+    # Calculate the time difference between each entry and its corresponding market_open
+    elapsed_time = entries.index.to_series() - merged['market_open']
+
+    # Convert the difference to minutes
+    elapsed_minutes = elapsed_time.dt.total_seconds() / 60.0
+
+    #elapsed_minutes = pd.DataFrame(elapsed_minutes, index=entries.index)
+
+    # Create a boolean mask for entries that are within the window
+    window_opened = (elapsed_minutes >= entry_window_opens) & (elapsed_minutes < entry_window_closes)
+
+    return window_opened
+
 
 class AnchoredIndicator:
     """

@@ -1,1 +1,1 @@
-from .vbtutils import AnchoredIndicator
+from .vbtutils import AnchoredIndicator, create_mask_from_window
