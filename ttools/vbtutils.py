@@ -2,61 +2,73 @@ import pandas as pd
 import vectorbtpro as vbt
 import pandas_market_calendars as mcal
 from typing import Any
+import datetime
 
-def create_mask_from_window(entries: Any, entry_window_opens:int, entry_window_closes:int):
+def create_mask_from_window(series: Any, entry_window_opens:int, entry_window_closes:int, use_cal: bool = True):
     """
-    Accepts entries and window range (number of minutes from market start) and returns boolean mask denoting 
-     entries within the window.
+    Accepts series and window range (number of minutes from market start) and returns boolean mask denoting 
+     series within the window.
 
     Parameters
     ----------
-    entries : pd.Series/pd:DataFrame
-        Entries to be masked.
+    series : pd.Series/pd:DataFrame
+        series to be masked.
     entry_window_opens : int
         Number of minutes from market start to open the window.
     entry_window_closes : int
         Number of minutes from market start to close the window.
+    use_cal : bool, default True
+        If True, uses NYSE calendar to determine market hours for each day. Otherwise uses 9:30 to 16:00 constant.
 
-    TODO: test with entries not covering whole main session
+    TODO: test with series not covering whole main session
 
     Returns
     -------
-    type of entries
+    type of series
     """
-    # Get the NYSE calendar
-    nyse = mcal.get_calendar("NYSE")
-    # Get the market hours data
-    market_hours = nyse.schedule(start_date=entries.index[0].to_pydatetime(), end_date=entries.index[-1].to_pydatetime(), tz=nyse.tz)
 
-    market_hours =market_hours.tz_localize(nyse.tz)
+    if use_cal:
+        # Get the NYSE calendar
+        nyse = mcal.get_calendar("NYSE")
+        # Get the market hours data
+        market_hours = nyse.schedule(start_date=series.index[0].to_pydatetime(), end_date=series.index[-1].to_pydatetime(), tz=nyse.tz)
 
-    # Ensure both entries and market_hours are timezone-aware and in the same timezone
-    if entries.index.tz is None:
-        entries.index = entries.index.tz_localize('America/New_York')
+        market_hours =market_hours.tz_localize(nyse.tz)
 
-    # Use merge_asof to align entries with the nearest market_open in market_hours
-    merged = pd.merge_asof(
-        entries.to_frame(), 
-        market_hours[['market_open', 'market_close']], 
-        left_index=True, 
-        right_index=True, 
-        direction='backward'
-    )
+        # Ensure both series and market_hours are timezone-aware and in the same timezone
+        if series.index.tz is None:
+            series.index = series.index.tz_localize('America/New_York')
 
-    # Calculate the time difference between each entry and its corresponding market_open
-    elapsed_time = entries.index.to_series() - merged['market_open']
+        # Use merge_asof to align series with the nearest market_open in market_hours
+        merged = pd.merge_asof(
+            series.to_frame(), 
+            market_hours[['market_open', 'market_close']], 
+            left_index=True, 
+            right_index=True, 
+            direction='backward'
+        )
 
-    # Convert the difference to minutes
-    elapsed_minutes = elapsed_time.dt.total_seconds() / 60.0
+        # Calculate the time difference between each entry and its corresponding market_open
+        elapsed_time = series.index.to_series() - merged['market_open']
 
-    #elapsed_minutes = pd.DataFrame(elapsed_minutes, index=entries.index)
+        # Convert the difference to minutes
+        elapsed_minutes = elapsed_time.dt.total_seconds() / 60.0
 
-    # Create a boolean mask for entries that are within the window
-    window_opened = (elapsed_minutes >= entry_window_opens) & (elapsed_minutes < entry_window_closes)
+        #elapsed_minutes = pd.DataFrame(elapsed_minutes, index=series.index)
 
-    # Return the mask as a series with the same index as entries
-    return pd.Series(window_opened.values, index=entries.index)
+        # Create a boolean mask for series that are within the window
+        window_opened = (elapsed_minutes >= entry_window_opens) & (elapsed_minutes < entry_window_closes)
 
+        # Return the mask as a series with the same index as series
+        return pd.Series(window_opened.values, index=series.index)
+    else:
+        # Calculate the time difference in minutes from market open for each timestamp
+        market_open = datetime.time(9, 30)
+        market_close = datetime.time(16, 0)
+        window_open= pd.Series(False, index=series.index)
+        elapsed_min_from_open = (series.index.hour - market_open.hour) * 60 + (series.index.minute - market_open.minute)
+        window_open[(elapsed_min_from_open >= entry_window_opens) & (elapsed_min_from_open < entry_window_closes)] = True
+        return window_open
 
 class AnchoredIndicator:
     """
