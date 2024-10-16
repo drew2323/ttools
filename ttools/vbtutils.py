@@ -17,6 +17,8 @@ def create_mask_from_window(entries: Any, entry_window_opens:int, entry_window_c
     entry_window_closes : int
         Number of minutes from market start to close the window.
 
+    TODO: test with entries not covering whole main session
+
     Returns
     -------
     type of entries
@@ -28,9 +30,13 @@ def create_mask_from_window(entries: Any, entry_window_opens:int, entry_window_c
 
     market_hours =market_hours.tz_localize(nyse.tz)
 
+    # Ensure both entries and market_hours are timezone-aware and in the same timezone
+    if entries.index.tz is None:
+        entries.index = entries.index.tz_localize('America/New_York')
+
     # Use merge_asof to align entries with the nearest market_open in market_hours
     merged = pd.merge_asof(
-        entries, 
+        entries.to_frame(), 
         market_hours[['market_open', 'market_close']], 
         left_index=True, 
         right_index=True, 
@@ -48,7 +54,8 @@ def create_mask_from_window(entries: Any, entry_window_opens:int, entry_window_c
     # Create a boolean mask for entries that are within the window
     window_opened = (elapsed_minutes >= entry_window_opens) & (elapsed_minutes < entry_window_closes)
 
-    return window_opened
+    # Return the mask as a series with the same index as entries
+    return pd.Series(window_opened.values, index=entries.index)
 
 
 class AnchoredIndicator:
