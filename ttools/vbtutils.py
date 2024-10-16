@@ -20,8 +20,6 @@ def create_mask_from_window(series: Any, entry_window_opens:int, entry_window_cl
     use_cal : bool, default True
         If True, uses NYSE calendar to determine market hours for each day. Otherwise uses 9:30 to 16:00 constant.
 
-    TODO: test with series not covering whole main session
-
     Returns
     -------
     type of series
