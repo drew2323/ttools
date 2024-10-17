@@ -4,6 +4,42 @@ import pandas_market_calendars as mcal
 from typing import Any
 import datetime
 
+def isrising(series: pd.Series, n: int) -> pd.Series:
+    """
+    Checks if a series is rising over a given window size.
+    
+    Parameters
+    ----------
+    series : pd.Series
+        Input series
+    n : int
+        Window size
+        
+    Returns
+    -------
+    pd.Series
+        Boolean mask indicating when the series is falling
+    """
+    return series.rolling(n).apply(lambda x: (x == sorted(x, reverse=True)).all(), raw=False).fillna(False).astype(bool)
+
+def isfalling(series: pd.Series, n: int) -> pd.Series:
+    """
+    Checks if a series is falling over a given window size.
+    
+    Parameters
+    ----------
+    series : pd.Series
+        Input series
+    n : int
+        Window size
+        
+    Returns
+    -------
+    pd.Series
+        Boolean mask indicating when the series is falling
+    """
+    return series.rolling(n).apply(lambda x: (x == sorted(x, reverse=True)).all(), raw=False).fillna(False).astype(bool)
+
 def create_mask_from_window(series: Any, entry_window_opens:int, entry_window_closes:int, use_cal: bool = True):
     """
     Accepts series and window range (number of minutes from market start) and returns boolean mask denoting 

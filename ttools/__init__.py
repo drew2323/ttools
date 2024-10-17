@@ -1,1 +1,1 @@
-from .vbtutils import AnchoredIndicator, create_mask_from_window
+from .vbtutils import AnchoredIndicator, create_mask_from_window, isrising, isfalling

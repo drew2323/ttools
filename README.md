@@ -40,3 +40,5 @@ exits = exits | forced_exits_window
 
 exits.tail(20)
 ```
+
+`isrising(series,n)`,`isfalling(series, n)` - returns mask where the condition is satisfied of consecutive rising or falling elements
