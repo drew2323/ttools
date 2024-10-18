@@ -50,7 +50,8 @@ def vwap_cum(high, low, close, volume, group_lens):
 cumulative anchored vwap indicator on HLCC4 price
 """
 cu_vwap_ind = vbt.IF(
-    class_name='ttools:CUVWAP',
+    class_name='CUVWAP',
+    module_name='ttools',
     input_names=['high', 'low', 'close', 'volume'],
     param_names=['anchor'],
     output_names=['vwap']
