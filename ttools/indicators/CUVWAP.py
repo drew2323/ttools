@@ -6,11 +6,9 @@ from vectorbtpro.base.wrapping import ArrayWrapper
 from vectorbtpro.utils.template import RepFunc
 
 """
-Contains custom indicators for vectorbtpro.
-
-import and run register_custom_inds() to register all custom indicators.
-
-They are available under `vbt.IF.list_indicators("ttols")`
+Cumulative Anchored VWAP indicator on HLCC4 price, anchor = "D", "h", or "min" ...
+drag = 0 - overlap with previous group. takes into account last N elements from previous group
+when calculating (simulating v2realbot logic)
 """
 
 def substitute_anchor(wrapper: ArrayWrapper, anchor: tp.Optional[tp.FrequencyLike]) -> tp.Array1d:
