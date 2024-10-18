@@ -81,7 +81,7 @@ def register_custom_inds(indicator_name: str = None, if_exists: str ="skip"):
     else:
         for var_name, var_value in globals().items():
             if var_name.startswith("IND_") and isinstance(var_value, vbt.IndicatorFactory):
-                vbt.IF.deregister_custom_indicator(var_value, location="ttools")
+                vbt.IF.register_custom_indicator(var_value, location="ttools", if_exists=if_exists)
 
 def deregister_custom_inds(indicator_name: str = None):
     """Deregister a custom indicator or all custom indicators.
@@ -101,4 +101,4 @@ def deregister_custom_inds(indicator_name: str = None):
     else:
         for var_name, var_value in globals().items():
             if var_name.startswith("IND_") and isinstance(var_value, vbt.IndicatorFactory):
-                vbt.IF.rdeegister_custom_indicator(var_value, location="ttools")
+                vbt.IF.deregister_custom_indicator(var_value, location="ttools")
