@@ -80,25 +80,18 @@ def register_custom_inds(indicator_name: str = None, if_exists: str ="skip"):
             raise ValueError(f"Indicator '{indicator_name}' not found")
     else:
         for var_name, var_value in globals().items():
-            if var_name.startswith("IND_") and isinstance(var_value, vbt.IndicatorFactory):
+            if var_name.startswith("IND_"):
                 vbt.IF.register_custom_indicator(var_value, location="ttools", if_exists=if_exists)
 
 def deregister_custom_inds(indicator_name: str = None):
     """Deregister a custom indicator or all custom indicators.
 
-    If `indicator_name` is provided, only the indicator with that name is registered.
-    Otherwise, all indicators are registered - they are the ones starting with "IND_" .
+    If `indicator_name` is provided, only the indicator with that name is deregistered.
+    Otherwise, all ttools indicators are deregistered.
 
     This function does not have an `if_exists` argument.
     """
     if indicator_name is not None:
-        var_name = f"IND_{indicator_name}"
-        var_value = globals().get(var_name)
-        if var_value is not None and isinstance(var_value, vbt.IndicatorFactory):
-            vbt.IF.deregister_custom_indicator(var_value, location="ttools")
-        else:
-            raise ValueError(f"Indicator '{indicator_name}' not found")
+            vbt.IF.deregister_custom_indicator(indicator_name, location="ttools")
     else:
-        for var_name, var_value in globals().items():
-            if var_name.startswith("IND_") and isinstance(var_value, vbt.IndicatorFactory):
-                vbt.IF.deregister_custom_indicator(var_value, location="ttools")
+            vbt.IF.deregister_custom_indicator(location="ttools")
