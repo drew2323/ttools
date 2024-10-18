@@ -65,4 +65,4 @@ cu_vwap_ind = vbt.IF(
 
 def register_custom_inds():
     #vwap_cum = vwap_ind.run(s12_data.high, s12_data.low, s12_data.close, s12_data.volume, anchor="min")
-    vbt.IF.register_custom_indicator(cu_vwap_ind) 
+    vbt.IF.register_custom_indicator(cu_vwap_ind, location="ttools")
