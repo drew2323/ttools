@@ -5,6 +5,14 @@ from vectorbtpro import _typing as tp
 from vectorbtpro.base.wrapping import ArrayWrapper
 from vectorbtpro.utils.template import RepFunc
 
+"""
+Contains custom indicators for vectorbtpro.
+
+import and run register_custom_inds() to register all custom indicators.
+
+They are available under `vbt.IF.list_indicators("ttols")`
+"""
+
 def substitute_anchor(wrapper: ArrayWrapper, anchor: tp.Optional[tp.FrequencyLike]) -> tp.Array1d:
     """Substitute reset frequency by group lens. It is array of number of elements of each group."""
     if anchor is None:
@@ -38,9 +46,11 @@ def vwap_cum(high, low, close, volume, group_lens):
                 out[i] = nom_cumsum / denum_cumsum
     return out
 
-#cumulative anchored vwap on HLCC4 price
+"""
+cumulative anchored vwap indicator on HLCC4 price
+"""
 cu_vwap_ind = vbt.IF(
-    class_name='CUVWAP',
+    class_name='ttools:CUVWAP',
     input_names=['high', 'low', 'close', 'volume'],
     param_names=['anchor'],
     output_names=['vwap']
@@ -52,5 +62,6 @@ cu_vwap_ind = vbt.IF(
                 anchor="D",
                 )
 
-#vwap_cum = vwap_ind.run(s12_data.high, s12_data.low, s12_data.close, s12_data.volume, anchor="min")
-vbt.IF.register_custom_indicator(cu_vwap_ind) 
+def register_custom_inds():
+    #vwap_cum = vwap_ind.run(s12_data.high, s12_data.low, s12_data.close, s12_data.volume, anchor="min")
+    vbt.IF.register_custom_indicator(cu_vwap_ind) 
