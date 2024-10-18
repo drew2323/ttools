@@ -49,7 +49,7 @@ def vwap_cum(high, low, close, volume, group_lens):
 """
 cumulative anchored vwap indicator on HLCC4 price
 """
-cu_vwap_ind = vbt.IF(
+IND_CUVWAP = vbt.IF(
     class_name='CUVWAP',
     module_name='ttools',
     input_names=['high', 'low', 'close', 'volume'],
@@ -63,6 +63,42 @@ cu_vwap_ind = vbt.IF(
                 anchor="D",
                 )
 
-def register_custom_inds():
-    #vwap_cum = vwap_ind.run(s12_data.high, s12_data.low, s12_data.close, s12_data.volume, anchor="min")
-    vbt.IF.register_custom_indicator(cu_vwap_ind, location="ttools", if_exists="override")
+def register_custom_inds(indicator_name: str = None, if_exists: str ="skip"):
+    """Register a custom indicator or all custom indicators.
+
+    If `indicator_name` is provided, only the indicator with that name is registered.
+    Otherwise, all indicators are registered - they are the ones starting with "IND_" .
+
+    Argument `if_exists` can be "raise", "skip", or "override".
+    """
+    if indicator_name is not None:
+        var_name = f"IND_{indicator_name}"
+        var_value = globals().get(var_name)
+        if var_value is not None and isinstance(var_value, vbt.IndicatorFactory):
+            vbt.IF.register_custom_indicator(var_value, location="ttools", if_exists=if_exists)
+        else:
+            raise ValueError(f"Indicator '{indicator_name}' not found")
+    else:
+        for var_name, var_value in globals().items():
+            if var_name.startswith("IND_") and isinstance(var_value, vbt.IndicatorFactory):
+                vbt.IF.deregister_custom_indicator(var_value, location="ttools")
+
+def deregister_custom_inds(indicator_name: str = None):
+    """Deregister a custom indicator or all custom indicators.
+
+    If `indicator_name` is provided, only the indicator with that name is registered.
+    Otherwise, all indicators are registered - they are the ones starting with "IND_" .
+
+    This function does not have an `if_exists` argument.
+    """
+    if indicator_name is not None:
+        var_name = f"IND_{indicator_name}"
+        var_value = globals().get(var_name)
+        if var_value is not None and isinstance(var_value, vbt.IndicatorFactory):
+            vbt.IF.deregister_custom_indicator(var_value, location="ttools")
+        else:
+            raise ValueError(f"Indicator '{indicator_name}' not found")
+    else:
+        for var_name, var_value in globals().items():
+            if var_name.startswith("IND_") and isinstance(var_value, vbt.IndicatorFactory):
+                vbt.IF.rdeegister_custom_indicator(var_value, location="ttools")
