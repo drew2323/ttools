@@ -20,7 +20,7 @@ def substitute_anchor(wrapper: ArrayWrapper, anchor: tp.Optional[tp.FrequencyLik
     return wrapper.get_index_grouper(anchor).get_group_lens()
 
 @jit(nopython=True)
-def vwap_cum(high, low, close, volume, group_lens):
+def vwap_cum(high, low, close, volume, group_lens, drag):
     #anchor based grouping - prepare group indexes
     group_end_idxs = np.cumsum(group_lens)
     group_start_idxs = group_end_idxs - group_lens
@@ -33,6 +33,7 @@ def vwap_cum(high, low, close, volume, group_lens):
     #iterate over groups
     for group in range(len(group_lens)):
         from_i = group_start_idxs[group]
+        from_i = max(0, from_i - drag)
         to_i = group_end_idxs[group]
         nom_cumsum = 0
         denum_cumsum = 0
@@ -47,13 +48,15 @@ def vwap_cum(high, low, close, volume, group_lens):
     return out
 
 """
-cumulative anchored vwap indicator on HLCC4 price
+cumulative anchored vwap indicator on HLCC4 price, anchor = "D", "h", or "min" ...
+drag = 0 - overlap with previous group. takes into account last N elements from previous group
+when calculating (simulating v2realbot logic)
 """
 IND_CUVWAP = vbt.IF(
     class_name='CUVWAP',
     module_name='ttools',
     input_names=['high', 'low', 'close', 'volume'],
-    param_names=['anchor'],
+    param_names=['anchor', "drag"],
     output_names=['vwap']
 ).with_apply_func(vwap_cum,
                 takes_1d=True,
@@ -61,6 +64,7 @@ IND_CUVWAP = vbt.IF(
                     anchor=dict(template=RepFunc(substitute_anchor)),
                 ),
                 anchor="D",
+                drag=0
                 )
 
 def register_custom_inds(indicator_name: str = None, if_exists: str ="skip"):
