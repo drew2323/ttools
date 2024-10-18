@@ -25,7 +25,6 @@ DIVERGENCE - of two time series, same like in v2realbot
 
 @jit(nopython=True)
 def divergence(series1, series2, divtype):
-        print(divtype)
         #div = a+b   /   a-b  will give value between -1 and 1
         if divtype == "reln":
             return (series1 - series2) / (series1 + series2)
@@ -45,8 +44,8 @@ def divergence(series1, series2, divtype):
 """
 Divergence indicator - various divergences between two series
 """
-IND_DIVRELN = vbt.IF(
-    class_name='DIVRELN',
+IND_DIVERGENCE = vbt.IF(
+    class_name='DIVERGENCE',
     module_name='ttools',
     input_names=['series1', 'series2'],
     param_names=["divtype"],
