@@ -44,9 +44,10 @@ exits = exits | forced_exits_window
 
 exits.tail(20)
 ```
+## is rising/is falling
+`isrising(series,n)`,`isfalling(series, n)` - returns mask where the condition is satisfied of rising or falling elements including equal values
 
-`isrising(series,n)`,`isfalling(series, n)` - returns mask where the condition is satisfied of consecutive rising or falling elements
-
+`isrisingc(series,n)`,`isfallingc(series, n)`  - same as above but scritly rising/fallinf (no equal values)
 # Indicators
 
 Custom indicators in the `indicators` folder.

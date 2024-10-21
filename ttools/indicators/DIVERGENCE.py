@@ -24,22 +24,28 @@ DIVERGENCE - of two time series, same like in v2realbot
 
 
 @jit(nopython=True)
-def divergence(series1, series2, divtype):
+def divergence(series1, series2, divtype, round):
         #div = a+b   /   a-b  will give value between -1 and 1
         if divtype == "reln":
-            return (series1 - series2) / (series1 + series2)
+            out = (series1 - series2) / (series1 + series2)
         elif divtype == "rel":
-            return series1 - series2
+            out = series1 - series2
         elif divtype == "abs":
-            return np.abs(series1 - series2)
+            out = np.abs(series1 - series2)
         elif divtype == "absn":
-            return np.abs(series1 - series2) / series1
+            out = np.abs(series1 - series2) / series1
         elif divtype == "pctabs":
-            return np.abs(((series1 - series2) / series1) * 100)
+            out = np.abs(((series1 - series2) / series1) * 100)
         elif divtype == "pct":
-            return ((series1 - series2) / series1) * 100
+            out = ((series1 - series2) / series1) * 100
         else:
-            return np.full_like(series1, np.nan)
+            out = np.full_like(series1, np.nan)
+        
+        for i in range(out.shape[0]):
+            if not np.isnan(out[i]):
+                out[i] = np.round(out[i], round)
+
+        return out
 
 """
 Divergence indicator - various divergences between two series
@@ -48,11 +54,12 @@ IND_DIVERGENCE = vbt.IF(
     class_name='DIVERGENCE',
     module_name='ttools',
     input_names=['series1', 'series2'],
-    param_names=["divtype"],
+    param_names=["divtype", "round"],
     output_names=['div']
 ).with_apply_func(divergence,
                 takes_1d=True,
                 param_settings=dict(
                 ),
-                divtype="reln"
+                divtype="reln",
+                round=4
                 )

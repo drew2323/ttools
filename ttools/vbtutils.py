@@ -4,6 +4,7 @@ import pandas_market_calendars as mcal
 from typing import Any
 import datetime
 
+#TBD create NUMBA alternatives
 def isrising(series: pd.Series, n: int) -> pd.Series:
     """
     Checks if a series is rising over a given window size.
@@ -23,6 +24,32 @@ def isrising(series: pd.Series, n: int) -> pd.Series:
     """
     return series.rolling(n).apply(lambda x: (x == sorted(x, reverse=False)).all(), raw=False).fillna(False).astype(bool)
 
+def isrisingc(series: pd.Series, n: int) -> pd.Series:
+    """
+    Checks if a series is strictly rising over a given window size.
+    Returns True for windows where values are strictly increasing.
+    
+    Parameters
+    ----------
+    series : pd.Series
+        Input series
+    n : int
+        Window size
+        
+    Returns
+    -------
+    pd.Series
+        Boolean mask indicating when the series is strictly rising
+    """
+    # Calculate the difference between consecutive values
+    diffs = series.diff()
+
+    # We check if all values in the window are negative (falling)
+    result = diffs.rolling(n-1).apply(lambda x: (x > 0).all(), raw=True)
+    
+    # Fill the first n-1 values with False and return the boolean mask
+    return result.fillna(False).astype(bool)
+
 def isfalling(series: pd.Series, n: int) -> pd.Series:
     """
     Checks if a series is falling over a given window size.
@@ -40,6 +67,33 @@ def isfalling(series: pd.Series, n: int) -> pd.Series:
         Boolean mask indicating when the series is falling
     """
     return series.rolling(n).apply(lambda x: (x == sorted(x, reverse=True)).all(), raw=False).fillna(False).astype(bool)
+
+def isfallingc(series: pd.Series, n: int) -> pd.Series:
+    """
+    Checks if a series is strictly falling over a given window size.
+    Returns True for windows where values are strictly decreasing.
+    
+    Parameters
+    ----------
+    series : pd.Series
+        Input series
+    n : int
+        Window size
+        
+    Returns
+    -------
+    pd.Series
+        Boolean mask indicating when the series is strictly falling
+    """
+    # Calculate the difference between consecutive values
+    diffs = series.diff()
+
+    # We check if all values in the window are negative (falling)
+    result = diffs.rolling(n-1).apply(lambda x: (x < 0).all(), raw=True)
+    
+    # Fill the first n-1 values with False and return the boolean mask
+    return result.fillna(False).astype(bool)
+
 
 def create_mask_from_window(series: Any, entry_window_opens:int, entry_window_closes:int, use_cal: bool = True):
     """
