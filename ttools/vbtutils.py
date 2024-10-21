@@ -7,6 +7,7 @@ import datetime
 def isrising(series: pd.Series, n: int) -> pd.Series:
     """
     Checks if a series is rising over a given window size.
+    Returns True for windows where values are either strictly increasing or staying the same
     
     Parameters
     ----------
@@ -20,12 +21,12 @@ def isrising(series: pd.Series, n: int) -> pd.Series:
     pd.Series
         Boolean mask indicating when the series is falling
     """
-    return series.rolling(n).apply(lambda x: (x == sorted(x, reverse=True)).all(), raw=False).fillna(False).astype(bool)
+    return series.rolling(n).apply(lambda x: (x == sorted(x, reverse=False)).all(), raw=False).fillna(False).astype(bool)
 
 def isfalling(series: pd.Series, n: int) -> pd.Series:
     """
     Checks if a series is falling over a given window size.
-    
+        Returns True for windows where values are either strictly decreasing or staying the same
     Parameters
     ----------
     series : pd.Series

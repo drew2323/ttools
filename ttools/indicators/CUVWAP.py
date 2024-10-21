@@ -9,6 +9,8 @@ from vectorbtpro.utils.template import RepFunc
 Cumulative Anchored VWAP indicator on HLCC4 price, anchor = "D", "h", or "min" ...
 drag = 0 - overlap with previous group. takes into account last N elements from previous group
 when calculating (simulating v2realbot logic)
+
+HLCC4 price is rounded to hlcc4_round decimas (default is 3)
 """
 
 def substitute_anchor(wrapper: ArrayWrapper, anchor: tp.Optional[tp.FrequencyLike]) -> tp.Array1d:
@@ -18,15 +20,21 @@ def substitute_anchor(wrapper: ArrayWrapper, anchor: tp.Optional[tp.FrequencyLik
     return wrapper.get_index_grouper(anchor).get_group_lens()
 
 @jit(nopython=True)
-def vwap_cum(high, low, close, volume, group_lens, drag):
+def vwap_cum(high, low, close, volume, group_lens, drag, hlcc4_round):
     #anchor based grouping - prepare group indexes
     group_end_idxs = np.cumsum(group_lens)
     group_start_idxs = group_end_idxs - group_lens
 
     #prepare output
     out = np.full(volume.shape, np.nan, dtype=np.float_)
+    #hlcc4 = np.empty_like(close)
 
     hlcc4 = (high + low + close + close) / 4
+
+    for i in range(hlcc4.shape[0]):
+        hlcc4[i] = np.round(hlcc4[i], hlcc4_round)
+
+    #hlcc4 = np.floor(hlcc4 * 1000 + 0.5) / 1000 #nworkaround for np.round(hlcc4, 3) which doesnt work without iterating
 
     #iterate over groups
     for group in range(len(group_lens)):
@@ -43,7 +51,7 @@ def vwap_cum(high, low, close, volume, group_lens, drag):
                 out[i] = np.nan
             else:
                 out[i] = nom_cumsum / denum_cumsum
-    return out
+    return out, hlcc4
 
 """
 cumulative anchored vwap indicator on HLCC4 price, anchor = "D", "h", or "min" ...
@@ -55,12 +63,13 @@ IND_CUVWAP = vbt.IF(
     module_name='ttools',
     input_names=['high', 'low', 'close', 'volume'],
     param_names=['anchor', "drag"],
-    output_names=['vwap']
+    output_names=['vwap','hlcc4']
 ).with_apply_func(vwap_cum,
                 takes_1d=True,
                 param_settings=dict(
                     anchor=dict(template=RepFunc(substitute_anchor)),
                 ),
                 anchor="D",
-                drag=0
+                drag=0,
+                hlcc4_round=3
                 )
