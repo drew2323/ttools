@@ -1,9 +1,13 @@
 # ttools
 A Python library for tools, utilities, and helpers for my trading research workflow.
 
+## Installation
+
+```python
+pip install git+https://github.com/drew2323/ttools.git
+```
 Modules:
-# utils
-## vbtutils
+# vbtutils
 
 Contains helpers for vbtpro
 
@@ -43,11 +47,11 @@ exits.tail(20)
 
 `isrising(series,n)`,`isfalling(series, n)` - returns mask where the condition is satisfied of consecutive rising or falling elements
 
-## Indicators
+# Indicators
 
 Custom indicators in the `indicators` folder.
 
-### Importing
+## Importing
 ```python
 from ttools.vbtindicators import register_custom_inds
 register_custom_inds(None, "override") #All indicators from the folder are automatically imported and registered.
@@ -61,11 +65,11 @@ vbt.phelp(vbt.indicator("ttools:CUVWAP").run)
 
 vwap_cum_d = vbt.indicator("ttools:CUVWAP").run(s12_data.high, s12_data.low, s12_data.close, s12_data.volume, anchor=vbt.Default(value="D"), drag=vbt.Default(value=50), hide_default=True)
 ```
-### Creating
+## Creating
 
 To create custom indicators CUSTOMNAME.py in `indicators` folder is created containing varibles IND_CUSTOMNAME containing the Indicator Factory class.
 
-### Available
+## Available
 
 - `CUVWAP` - Cumulative VWAP with anchor based on HLCC4 with optional rounding (hlcc4_round, def.3) and drag - warming period from previous anchor unit(def.0).
 - `DIVERGENCE` - Various divergences between two timeseries (abs, relative, relative normalized, pct, abs pct)
