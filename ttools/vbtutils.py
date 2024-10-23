@@ -5,16 +5,24 @@ from typing import Any
 import datetime
 
 
-def trades2entries_exits(trades: pd.DataFrame):
+def trades2entries_exits(pf):
     """
-    Convert trades DataFrame to entries and exits DataFrame for use in lw plot
+    Convert trades from Portfolio to entries and exits DataFrame for use in lw plot
+
+    For each trade exit type is fetched from orders.
 
     Args:
-        trades (pd.DataFrame): Trades DataFrame from pf.trades.readable.
+        pf Portfolio object: trades and orders
 
     Returns:
         tuple: (entries DataFrame, exits DataFrame)
     """
+    trades = pf.trades.readable
+    orders = pf.orders.readable
+
+    # Merge the dataframes on 'order_id'
+    trades = trades.merge(orders[['Order Id', 'Stop Type']], left_on='Exit Order Id', right_on='Order Id', how='left').drop(columns=['Order Id'])
+
     # Create the entries DataFrame with 'Entry Index' as the datetime index
     trade_entries = trades.set_index('Entry Index')
 
@@ -32,7 +40,8 @@ def trades2entries_exits(trades: pd.DataFrame):
             # 'Direction': '',
             'PnL': 'c',
             'Avg Entry Price': '',
-            'Return': 'r:'
+            'Return': 'r:',
+            'Stop Type': '',
         }
 
     # Function to handle rounding and concatenation with labels
@@ -41,6 +50,8 @@ def trades2entries_exits(trades: pd.DataFrame):
         for col, label in columns_with_labels.items():
             value = row[col]
             # Check if the value is a float and round it to 4 decimals
+            if value is None:
+                continue
             if isinstance(value, float):
                 formatted_values.append(f"{label}{round(value, 3)}")
             else:
