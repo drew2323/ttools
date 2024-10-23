@@ -5,20 +5,28 @@ from typing import Any
 import datetime
 
 
-def trades2entries_exits(pf):
+def trades2entries_exits(pf, notext=False):
     """
     Convert trades from Portfolio to entries and exits DataFrame for use in lw plot
 
-    For each trade exit type is fetched from orders.
+    For each trade exit type is fetched from orders and transformed for markers to use.
+
+
 
     Args:
         pf Portfolio object: trades and orders
+        notext (bool): if True, no text is added
 
     Returns:
         tuple: (entries DataFrame, exits DataFrame)
     """
     trades = pf.trades.readable
     orders = pf.orders.readable
+
+    if notext:
+        trade_entries = pd.Series(index=trades["Entry Index"], dtype=bool, data=True)
+        trade_exits = pd.Series(index=trades["Exit Index"], dtype=bool, data=True)
+        return trade_entries, trade_exits
 
     # Merge the dataframes on 'order_id'
     trades = trades.merge(orders[['Order Id', 'Stop Type']], left_on='Exit Order Id', right_on='Order Id', how='left').drop(columns=['Order Id'])
