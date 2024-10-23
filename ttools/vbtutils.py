@@ -4,6 +4,62 @@ import pandas_market_calendars as mcal
 from typing import Any
 import datetime
 
+
+def trades2entries_exits(trades: pd.DataFrame):
+    """
+    Convert trades DataFrame to entries and exits DataFrame for use in lw plot
+
+    Args:
+        trades (pd.DataFrame): Trades DataFrame from pf.trades.readable.
+
+    Returns:
+        tuple: (entries DataFrame, exits DataFrame)
+    """
+    # Create the entries DataFrame with 'Entry Index' as the datetime index
+    trade_entries = trades.set_index('Entry Index')
+
+    # Create the exits DataFrame with 'Exit Index' as the datetime index
+    trade_exits = trades.set_index('Exit Index')
+
+    cols_to_entries =  {
+            # 'Size': '',
+            'Direction': '',
+            'Avg Entry Price': ''
+        }
+
+    cols_to_exits =  {
+            # 'Size': '',
+            # 'Direction': '',
+            'PnL': 'c',
+            'Avg Entry Price': '',
+            'Return': 'r:'
+        }
+
+    # Function to handle rounding and concatenation with labels
+    def format_row(row, columns_with_labels):
+        formatted_values = []
+        for col, label in columns_with_labels.items():
+            value = row[col]
+            # Check if the value is a float and round it to 4 decimals
+            if isinstance(value, float):
+                formatted_values.append(f"{label}{round(value, 3)}")
+            else:
+                formatted_values.append(f"{label}{value}")
+        return ', '.join(formatted_values)
+
+    # Add concatenated column to entries DataFrame
+    trade_entries['text'] = trade_entries.apply(lambda row: format_row(row, cols_to_entries), axis=1)
+
+    # Add concatenated column to exits DataFrame
+    trade_exits['text'] = trade_exits.apply(lambda row: format_row(row, cols_to_exits), axis=1)
+
+    trade_exits["value"] = True
+    trade_entries["value"] = True
+    trade_entries["price"] = trade_entries["Avg Entry Price"]
+    trade_exits["price"] = trade_exits["Avg Exit Price"]
+    return trade_entries, trade_exits
+
+
 #TBD create NUMBA alternatives
 def isrising(series: pd.Series, n: int) -> pd.Series:
     """
