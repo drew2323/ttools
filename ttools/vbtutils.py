@@ -80,7 +80,7 @@ def trades2entries_exits(pf, notext=False):
             # 'Size': '',
             # 'Direction': '',
             'PnL': 'c',
-            'Avg Entry Price': '',
+            'Avg Exit Price': '',
             'Return': 'r:',
             'Stop Type': '',
         }
