@@ -3,7 +3,40 @@ import vectorbtpro as vbt
 import pandas_market_calendars as mcal
 from typing import Any
 import datetime
+import plotly.graph_objects as go
+import ipywidgets as widgets
+from IPython.display import display
 
+
+def figs2cell(fig_list):
+    """
+    Display a list of plotly figures side by side in a notebook.
+    Allows to display multiple plots in a single cell.
+    Args:
+        fig_list (list): list of figures
+
+    Example usage:
+
+    ```python
+    figs = []
+    fig1 = df.groupby([df['Exit Index'].dt.day_name(), 'Direction'])['PnL'].sum().unstack().vbt.barplot()
+    fig2 = df.groupby([df['Exit Index'].dt.day_name(), 'Direction'])['PnL'].sum().unstack().vbt.barplot()
+    figs.append(fig1)
+    figs.append(fig2)
+    display_figs_side_by_side(figs)
+    ```
+    """
+    # Create output widgets for each figure
+    output_widgets = []
+    for fig in fig_list:
+        out = widgets.Output()
+        with out:
+            fig.show()
+        output_widgets.append(out)
+    
+    # Create an HBox to display the widgets side by side
+    hbox = widgets.HBox(output_widgets)
+    display(hbox)
 
 def trades2entries_exits(pf, notext=False):
     """

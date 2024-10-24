@@ -44,6 +44,21 @@ exits = exits | forced_exits_window
 
 exits.tail(20)
 ```
+## display plotly figs in single ntb cells
+
+`figs2cell(figlist)`
+
+Example usage:
+
+```python
+figs = []
+fig1 = df.groupby([df['Exit Index'].dt.day_name(), 'Direction'])['PnL'].sum().unstack().vbt.barplot()
+fig2 = df.groupby([df['Exit Index'].dt.day_name(), 'Direction'])['PnL'].sum().unstack().vbt.barplot()
+figs.append(fig1)
+figs.append(fig2)
+display_figs_side_by_side(figs)
+```
+
 ## is rising/is falling
 `isrising(series,n)`,`isfalling(series, n)` - returns mask where the condition is satisfied of rising or falling elements including equal values
 
