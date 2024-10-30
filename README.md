@@ -130,6 +130,8 @@ exits.tail(20)
 ```
 ## display plotly figs in single ntb cells
 
+To display various standalone figures in the same cell.
+
 `figs2cell(figlist)`
 
 Example usage:
