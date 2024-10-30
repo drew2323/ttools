@@ -21,40 +21,23 @@ Returns vectorized aggregation of given type. If trades for given period are not
 Example:
 
 ```python
+from ttools import load_data
 #This is how to call LOAD function
-symbol = ["BAC"]
-#datetime in zoneNY 
-day_start = datetime(2024, 10, 14, 9, 45, 0)
-day_stop = datetime(2024, 10, 16, 15, 1, 0)
-day_start = zoneNY.localize(day_start)
-day_stop = zoneNY.localize(day_stop)
-
-#requested AGG
-resolution = 12 #12s
-agg_type = AggType.OHLCV #other types AggType.OHLCV_VOL, AggType.OHLCV_DOL, AggType.OHLCV_RENKO
-exclude_conditions = ['C','O','4','B','7','V','P','W','U','Z','F','9','M','6'] #None to defaults
-minsize = 100
-main_session_only = True
-force_remote = False
-
-data = load_data(symbol = symbol,
-                     agg_type = agg_type,
-                     resolution = resolution,
-                     start_date = day_start,
-                     end_date = day_stop,
-                     #exclude_conditions = None,
-                     minsize = minsize,
-                     main_session_only = main_session_only,
-                     force_remote = force_remote,
-                     return_vbt = True, #returns vbt object
-                     verbose = True
+vbt_data = load_data(symbol = ["BAC"],
+                     agg_type = AggType.OHLCV, #aggregation types: AggType.OHLCV_VOL, AggType.OHLCV_DOL, AggType.OHLCV_RENKO,
+                     resolution = 12, #12s (for other types might be bricksize etc.)
+                     start_date = datetime(2024, 10, 14, 9, 45, 0),
+                     end_date = datetime(2024, 10, 16, 15, 1, 0),
+                     #exclude_conditions = ['C','O','4','B','7','V','P','W','U','Z','F','9','M','6'],
+                     minsize = 100, #minimum trade size included in aggregation
+                     main_session_only = True, #False for ext hours
+                     force_remote = False, #always refetches trades remotely
+                     return_vbt = True, #returns vbt object with symbols as columns, otherwise dict keyed by symbols with pd.DataFrame
+                     verbose = True # False = silent mode
                      )
-bac_df = ohlcv_df["BAC"]
 
-basic_data = vbt.Data.from_data(vbt.symbol_dict(ohlcv_df), tz_convert=zoneNY)
-vbt.settings['plotting']['auto_rangebreaks'] = True
-basic_data.ohlcv.plot()
-data.ohlcv.data[symbol[0]].lw.plot()
+vbt_data.ohlcv.data[symbol[0]].lw.plot()
+vbt_data.data[symbol[0]]
 ```
 ## prepare trade cache
 

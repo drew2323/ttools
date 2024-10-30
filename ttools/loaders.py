@@ -359,8 +359,8 @@ def load_data(symbol: Union[str, List[str]],
         symbol (Union[str, list]): Symbol
         agg_type (AggType): Type of aggregation
         resolution (Union[str, int]) Resolution of aggregation nased on agg_type 
-        start_date (datetime): 
-        end_date (datetime): 
+        start_date (datetime): Start period, timezone aware
+        end_date (datetime): Start period, timezone aware
         exclude_conditions (list, optional): Trade conditions to exclude. Defaults to None.
         minsize (_type_, optional): Minimum trade size to include. Defaults to None.
         main_session_only (bool, optional): Main or ext. hours.. Defaults to True.
@@ -378,6 +378,12 @@ def load_data(symbol: Union[str, List[str]],
 
     if verbose is not None:
         set_verbose(verbose)  # Change global verbose if specified    
+
+    if start_date.tzinfo is None:
+        start_date = zoneNY.localize(start_date)
+
+    if end_date.tzinfo is None:
+        end_date = zoneNY.localize(end_date)
 
     if exclude_conditions is None:
         exclude_conditions = EXCLUDE_CONDITIONS
