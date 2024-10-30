@@ -5,6 +5,8 @@ A Python library for tools, utilities, and helpers for my trading research workf
 
 ```python
 pip install git+https://github.com/drew2323/ttools.git
+or
+pip install git+https://gitea.stratlab.dev/dwker/ttools.git
 ```
 Modules:
 # loaders
@@ -13,7 +15,7 @@ Modules:
 - manages trade cache (daily trade files per symbol) and aggregation cache (per symbola and requested period)
 - numba compiled aggregator for required output (time based, dollars, volume bars, renkos...).
 
-Detailed examples in `tests/data_loader_tryme.ipynb`
+Detailed examples in [tests/data_loader_tryme.ipynb](tests/data_loader_tryme.ipynb)
 
 ## load_data
 Returns vectorized aggregation of given type. If trades for given period are not cached they are remotely fetched from Alpaca first.
@@ -39,6 +41,19 @@ vbt_data = load_data(symbol = ["BAC"],
 vbt_data.ohlcv.data[symbol[0]].lw.plot()
 vbt_data.data[symbol[0]]
 ```
+
+### cache
+There are 2 caches created
+- trade cache - daily files per symbol with all trades
+- agg cache - aggregated output keyed by aggtype, resolution, conditions and ranges
+
+### keys
+Required Alpaca API keys in env variables or .env files.
+```python
+ACCOUNT1_LIVE_API_KEY=api_key
+ACCOUNT1_LIVE_SECRET_KEY=secret_key
+```
+
 ## prepare trade cache
 
 To prepare daily trade cache files for given period.
