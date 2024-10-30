@@ -8,7 +8,10 @@ pip install git+https://github.com/drew2323/ttools.git
 ```
 Modules:
 # loaders
-Loads trades, aggregates data based on requested aggregation type (time based, dollars, volume bars, renkos...). And manages trade cache (daily trade files per symbol) and aggregation cache (per symbola and requested period).
+
+- remotely fetches daily trade data
+- manages trade cache (daily trade files per symbol) and aggregation cache (per symbola and requested period)
+- numba compiled aggregator for required output (time based, dollars, volume bars, renkos...).
 
 Detailed examples in `tests/data_loader_tryme.ipynb`
 
