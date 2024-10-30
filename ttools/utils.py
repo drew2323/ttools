@@ -4,11 +4,37 @@ from datetime import datetime, timedelta
 from typing import List, Tuple
 import pytz
 import calendar
-
+import os
+from alpaca.trading.models import Order, TradeUpdate, Calendar
+import pandas_market_calendars as mcal
 #Zones
 zoneNY = pytz.timezone('US/Eastern')
 zoneUTC = pytz.utc
 zonePRG = pytz.timezone('Europe/Amsterdam')
+
+def fetch_calendar_data(start: datetime, end: datetime) -> List[Calendar]:
+    """
+    Fetches the trading schedule for the NYSE (New York Stock Exchange) between the specified start and end dates.
+    Args:
+        start (datetime): The start date for the trading schedule.
+        end (datetime): The end date for the trading schedule.
+    Returns:
+        List[Calendar]: A list of Calendar objects containing the trading dates and market open/close times. 
+                        Returns an empty list if no trading days are found within the specified range.
+    """ 
+    nyse = mcal.get_calendar('NYSE')
+    schedule = nyse.schedule(start_date=start, end_date=end, tz='America/New_York')
+    if not schedule.empty: 
+        schedule = (schedule.reset_index()
+                        .rename(columns={"index": "date", "market_open": "open", "market_close": "close"})
+                        .assign(date=lambda day: day['date'].dt.date.astype(str),
+                                open=lambda day: day['open'].dt.strftime('%H:%M'), 
+                                close=lambda day: day['close'].dt.strftime('%H:%M'))
+                        .to_dict(orient="records"))
+        cal_dates = [Calendar(**record) for record in schedule]
+        return cal_dates
+    else:
+        return []
 
 def split_range(start: datetime, stop: datetime, period: str = "Y") -> List[Tuple[datetime, datetime]]:
     """
@@ -70,8 +96,7 @@ def split_range(start: datetime, stop: datetime, period: str = "Y") -> List[Tupl
     return ranges
 
 
-
-def find_dotenv(start_path):
+def find_dotenv():
     """
     Searches for a .env file in the given directory or its parents and returns the path.
 
@@ -81,6 +106,13 @@ def find_dotenv(start_path):
     Returns:
         Path to the .env file if found, otherwise None.
     """
+    try:
+        start_path = __file__
+    except NameError:
+        #print("Notebook probably")
+        start_path = os.getcwd()  
+        #print(start_path)       
+
     current_path = Path(start_path)
     for _ in range(6):  # Limit search depth to 5 levels
         dotenv_path = current_path / '.env'
@@ -89,22 +121,9 @@ def find_dotenv(start_path):
         current_path = current_path.parent
     return None
 
-# def get_daily_tradecache_file():
-#     return Path(DATA_DIR) / "tradecache"
-
-# def get_daily_aggcache_file():
-#     #nazev obsahuje i child class
-#     #a take excludes result = ''.join(self.excludes.sort())
-#     self.excludes.sort()  # Sorts the list in place
-#     excludes_str = ''.join(map(str, self.excludes))  # Joins the sorted elements after converting them to strings
-#     cache_file = self.__class__.__name__ + '-' + self.symbol + '-' + str(int(date_from.timestamp())) + '-' + str(int(date_to.timestamp())) + '-' + str(self.rectype) + "-" + str(self.resolution) + "-" + str(self.minsize) + "-" + str(self.align) + '-' + str(self.mintick) + str(self.exthours) + excludes_str + '.cache.gz'
-#     file_path = DATA_DIR + "/aggcache/" + cache_file
-#     #print(file_path)
-#     return file_path
-
 
 #create enum AGG_TYPE
-class AGG_TYPE(str, Enum):
+class AggType(str, Enum):
     """
     Enum class for aggregation types.
     ohlcv - time based ohlcv (time as resolution)
@@ -116,19 +135,6 @@ class AGG_TYPE(str, Enum):
     OHLCV_VOL = 'ohlcv_vol'
     OHLCV_DOL = 'ohlcv_dol'
     OHLCV_RENKO = 'ohlcv_renko'
-
-class RecordType(str, Enum):
-    """
-    Represents output of aggregator
-    """
-
-    BAR = "bar"
-    CBAR = "cbar"
-    CBARVOLUME = "cbarvolume"
-    CBARDOLLAR = "cbardollar"
-    CBARRENKO = "cbarrenko"
-    TRADE = "trade"
-
 
 class StartBarAlign(str, Enum):
     """

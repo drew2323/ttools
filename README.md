@@ -7,6 +7,86 @@ A Python library for tools, utilities, and helpers for my trading research workf
 pip install git+https://github.com/drew2323/ttools.git
 ```
 Modules:
+# loaders
+Loads trades, aggregates data based on requested aggregation type (time based, dollars, volume bars, renkos...). And manages trade cache (daily trade files per symbol) and aggregation cache (per symbola and requested period).
+
+Detailed examples in `tests/data_loader_tryme.ipynb`
+
+## load_data
+Returns vectorized aggregation of given type. If trades for given period are not cached they are remotely fetched from Alpaca first.
+
+Example:
+
+```python
+#This is how to call LOAD function
+symbol = ["BAC"]
+#datetime in zoneNY 
+day_start = datetime(2024, 10, 14, 9, 45, 0)
+day_stop = datetime(2024, 10, 16, 15, 1, 0)
+day_start = zoneNY.localize(day_start)
+day_stop = zoneNY.localize(day_stop)
+
+#requested AGG
+resolution = 1
+agg_type = AggType.OHLCV #other types AggType.OHLCV_VOL, AggType.OHLCV_DOL, AggType.OHLCV_RENKO
+exclude_conditions = ['C','O','4','B','7','V','P','W','U','Z','F','9','M','6'] #None to defaults
+minsize = 100
+main_session_only = True
+force_remote = True
+
+ohlcv_df = load_data(symbol = symbol,
+                     agg_type = agg_type,
+                     resolution = resolution,
+                     start_date = day_start,
+                     end_date = day_stop,
+                     #exclude_conditions = None,
+                     minsize = 100,
+                     main_session_only = True,
+                     force_remote = False
+                     )
+bac_df = ohlcv_df["BAC"]
+
+basic_data = vbt.Data.from_data(vbt.symbol_dict(ohlcv_df), tz_convert=zoneNY)
+vbt.settings['plotting']['auto_rangebreaks'] = True
+basic_data.ohlcv.plot()
+```
+## prepare trade cache
+
+To prepare daily trade cache files for given period.
+If they are not present in cache, they are fetched.
+`force_remote` refetches from remote, even when exists in cache.
+
+```python
+from ttools.loaders import prepare_trade_cache
+
+symbols = ["BAC", "AAPL"]
+#datetime in zoneNY 
+day_start = datetime(2024, 10, 1, 9, 45, 0)
+day_stop = datetime(2024, 10, 14, 15, 1, 0)
+day_start = zoneNY.localize(day_start)
+day_stop = zoneNY.localize(day_stop)
+force_remote = False
+
+prepare_trade_cache(symbols, day_start, day_stop, force_remote)
+```
+
+### Prepare daily trade cache - cli script
+
+Daily trade cache data can be fetched for given period by CLI script, that can run in the background.
+
+Note: To fetch 1 day takes about 35s. It is stored in /tradescache/ directory as daily file keyed by symbol.
+
+To run this script in the background with specific arguments:
+
+```bash
+# Running without forcing remote fetch
+python3 prepare_cache.py --symbols BAC AAPL --day_start 2024-10-14 --day_stop 2024-10-18 &
+
+# Running with force_remote set to True
+python3 prepare_cache.py --symbols BAC AAPL --day_start 2024-10-14 --day_stop 2024-10-18 --force_remote &
+
+```
+
 # vbtutils
 
 Contains helpers for vbtpro
