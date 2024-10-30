@@ -30,28 +30,31 @@ day_start = zoneNY.localize(day_start)
 day_stop = zoneNY.localize(day_stop)
 
 #requested AGG
-resolution = 1
+resolution = 12 #12s
 agg_type = AggType.OHLCV #other types AggType.OHLCV_VOL, AggType.OHLCV_DOL, AggType.OHLCV_RENKO
 exclude_conditions = ['C','O','4','B','7','V','P','W','U','Z','F','9','M','6'] #None to defaults
 minsize = 100
 main_session_only = True
-force_remote = True
+force_remote = False
 
-ohlcv_df = load_data(symbol = symbol,
+data = load_data(symbol = symbol,
                      agg_type = agg_type,
                      resolution = resolution,
                      start_date = day_start,
                      end_date = day_stop,
                      #exclude_conditions = None,
-                     minsize = 100,
-                     main_session_only = True,
-                     force_remote = False
+                     minsize = minsize,
+                     main_session_only = main_session_only,
+                     force_remote = force_remote,
+                     return_vbt = True, #returns vbt object
+                     verbose = True
                      )
 bac_df = ohlcv_df["BAC"]
 
 basic_data = vbt.Data.from_data(vbt.symbol_dict(ohlcv_df), tz_convert=zoneNY)
 vbt.settings['plotting']['auto_rangebreaks'] = True
 basic_data.ohlcv.plot()
+data.ohlcv.data[symbol[0]].lw.plot()
 ```
 ## prepare trade cache
 

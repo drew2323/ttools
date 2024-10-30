@@ -14,9 +14,9 @@ ENV_FILE = find_dotenv()
 
 #NALOADUJEME DOTENV ENV VARIABLES
 if load_dotenv(ENV_FILE, verbose=True) is False:
-    print(f"Error loading.env file {ENV_FILE}. Now depending on ENV VARIABLES set externally.")
+    print(f"TTOOLS: Error loading.env file {ENV_FILE}. Now depending on ENV VARIABLES set externally.")
 else:
-    print(f"Loaded env variables from file {ENV_FILE}")
+    print(f"TTOOLS: Loaded env variables from file {ENV_FILE}")
 
 ACCOUNT1_LIVE_API_KEY = os.environ.get('ACCOUNT1_LIVE_API_KEY')
 ACCOUNT1_LIVE_SECRET_KEY = os.environ.get('ACCOUNT1_LIVE_SECRET_KEY')

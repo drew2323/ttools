@@ -11,6 +11,20 @@ import pandas_market_calendars as mcal
 zoneNY = pytz.timezone('US/Eastern')
 zoneUTC = pytz.utc
 zonePRG = pytz.timezone('Europe/Amsterdam')
+verbose = True #default
+
+# Save the built-in print function to a different name
+built_in_print = print
+
+# Custom print function that respects the global verbose setting
+def print(*args, **kwargs):
+    if verbose:
+        built_in_print(*args, **kwargs)
+
+# Function to set the global verbose variable
+def set_verbose(value):
+    global verbose
+    verbose = value
 
 def fetch_calendar_data(start: datetime, end: datetime) -> List[Calendar]:
     """
@@ -114,7 +128,7 @@ def find_dotenv():
         #print(start_path)       
 
     current_path = Path(start_path)
-    for _ in range(6):  # Limit search depth to 5 levels
+    for _ in range(10):  # Limit search depth to 5 levels
         dotenv_path = current_path / '.env'
         if dotenv_path.exists():
             return dotenv_path
