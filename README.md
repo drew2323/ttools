@@ -3,9 +3,11 @@ A Python library for tools, utilities, and helpers for my trading research workf
 
 ## Installation
 
-```python
+```bash
 pip install git+https://github.com/drew2323/ttools.git
+```
 or
+```bash
 pip install git+https://gitea.stratlab.dev/dwker/ttools.git
 ```
 Modules:
