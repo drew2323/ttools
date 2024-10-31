@@ -1,8 +1,5 @@
 
 from ctypes import Union
-from dotenv import load_dotenv
-from appdirs import user_data_dir
-from ttools.utils import find_dotenv
 from ttools.config import *
 from datetime import datetime
 from alpaca.data.historical import StockHistoricalDataClient
@@ -16,7 +13,7 @@ from time import time as timetime
 from concurrent.futures import ThreadPoolExecutor
 from alpaca.data.enums import DataFeed
 import random
-from ttools.utils import AggType, fetch_calendar_data, print, set_verbose
+from ttools.utils import AggType, fetch_calendar_data, print, print_matching_files_info, set_verbose, list_matching_files
 from tqdm import tqdm
 import threading
 from typing import List, Union
@@ -393,9 +390,25 @@ def load_data(symbol: Union[str, List[str]],
         excludes_str = ''.join(map(str, exclude_conditions))  
         file_ohlcv = AGG_CACHE / f"{symbol}-{str(agg_type)}-{str(resolution)}-{start_date.strftime('%Y-%m-%dT%H-%M-%S')}-{end_date.strftime('%Y-%m-%dT%H-%M-%S')}-{str(excludes_str)}-{minsize}-{main_session_only}.parquet"
 
-        if not force_remote and file_ohlcv.exists():
-            ohlcv_df = pd.read_parquet(file_ohlcv, engine='pyarrow')
-            print("Loaded from agg_cache", file_ohlcv)
+        #if matching files with same condition and same or wider date span
+        matched_files = list_matching_files(
+            symbol=symbol,
+            agg_type=str(agg_type),
+            resolution=str(resolution),
+            start_date=start_date,
+            end_date=end_date,
+            excludes_str=str(excludes_str),
+            minsize=minsize,
+            main_session_only=main_session_only
+        )
+        print("matched agg files", len(matched_files))
+        print_matching_files_info(matched_files)
+
+        if not force_remote and len(matched_files) > 0:
+            ohlcv_df = pd.read_parquet(matched_files[0],
+                                       engine='pyarrow',
+                                       filters=[('time', '>=', start_date), ('time', '<=', end_date)])
+            print("Loaded from agg_cache", matched_files[0])
             return ohlcv_df
         else:
             #neslo by zrychlit, kdyz se zobrazuje pomalu Searching cache - nejaky bottle neck?
@@ -411,6 +424,11 @@ def load_data(symbol: Union[str, List[str]],
         ret_dict_df[symbol] = load_data_single(symbol, agg_type, resolution, start_date, end_date, exclude_conditions, minsize, main_session_only, force_remote)
 
     if return_vbt:
+        try:
+            import vectorbtpro as vbt  # Import only when needed
+        except ImportError:
+            raise RuntimeError("vectorbtpro is required for return_vbt. Please install it.")
+                
         return vbt.Data.from_data(vbt.symbol_dict(ret_dict_df), tz_convert=zoneNY)
     
     return ret_dict_df

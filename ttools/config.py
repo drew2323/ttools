@@ -1,14 +1,35 @@
 
 from dotenv import load_dotenv
 from appdirs import user_data_dir
-from ttools.utils import find_dotenv
+import ttools.utils as utils
 import os
-import pytz
-import vectorbtpro as vbt
 import pytz
 from pathlib import Path
 from dotenv import load_dotenv
-import os
+def find_dotenv():
+    """
+    Searches for a .env file in the given directory or its parents and returns the path.
+
+    Args:
+        start_path: The directory to start searching from.
+
+    Returns:
+        Path to the .env file if found, otherwise None.
+    """
+    try:
+        start_path = __file__
+    except NameError:
+        #print("Notebook probably")
+        start_path = os.getcwd()  
+        #print(start_path)       
+
+    current_path = Path(start_path)
+    for _ in range(10):  # Limit search depth to 5 levels
+        dotenv_path = current_path / '.env'
+        if dotenv_path.exists():
+            return dotenv_path
+        current_path = current_path.parent
+    return None
 
 ENV_FILE = find_dotenv()
 

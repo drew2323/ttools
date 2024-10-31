@@ -18,7 +18,11 @@ Modules:
 Detailed examples in [tests/data_loader_tryme.ipynb](tests/data_loader_tryme.ipynb)
 
 ## load_data
-Returns vectorized aggregation of given type. If trades for given period are not cached they are remotely fetched from Alpaca first.
+Returns vectorized aggregation of given type.
+
+If aggregated data are already in agg cache with same conditions for same or wider date span they are returned from cache.
+Otherwise trade data are aggregated on the fly, saved to cache and returned.
+If trades for given period are not cached ,they are remotely fetched from Alpaca first.
 
 Example:
 
