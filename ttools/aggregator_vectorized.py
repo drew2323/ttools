@@ -10,8 +10,80 @@ Includes fetch (remote/cached) methods and numba aggregator function for TIME BA
 
 """""
 
+def aggregate_trades_optimized(symbol: str, trades_df: pd.DataFrame, resolution: int, type: AggType = AggType.OHLCV, clear_input: bool = False):
+    """
+    Optimized version of trade aggregation function with reduced memory footprint.
+    """
+    # 1. Get timestamps from index if 't' is not in columns
+    if 't' not in trades_df.columns:
+        timestamps = trades_df.index.values
+    else:
+        timestamps = trades_df['t'].values
+    
+    # 2. Select only needed columns for prices and sizes
+    prices = trades_df['p'].values
+    sizes = trades_df['s'].values
+    
+    #Clears input to freeup memory
+    if clear_input:
+        del trades_df
+
+    # 3. Convert timestamps maintaining exact precision
+    # Convert directly to int64 nanoseconds, then to float seconds
+    unix_timestamps_s = timestamps.view('int64').astype(np.float64) / 1e6
+    #original not optimized, in case of issues (5x slower)
+    #unix_timestamps_s = timestamps.astype('datetime64[ns]').astype(np.float64) / 1e9
+
+    # 4. Create ticks array efficiently
+    # 3. Pre-allocate array for better memory efficiency
+    ticks = np.empty((len(timestamps), 3), dtype=np.float64)
+    ticks[:, 0] = unix_timestamps_s
+    ticks[:, 1] = prices
+    ticks[:, 2] = sizes
+    
+    # 5. Clear memory of intermediate objects
+    del timestamps, prices, sizes, unix_timestamps_s
+    
+    # 6. Process based on type using existing pattern
+    try:
+        match type:
+            case AggType.OHLCV:
+                ohlcv_bars = generate_time_bars_nb(ticks, resolution)
+                columns = ['time', 'open', 'high', 'low', 'close', 'volume', 'trades', 
+                          'updated', 'vwap', 'buyvolume', 'sellvolume']
+            case AggType.OHLCV_VOL:
+                ohlcv_bars = generate_volume_bars_nb(ticks, resolution)
+                columns = ['time', 'open', 'high', 'low', 'close', 'volume', 'trades',
+                          'updated', 'buyvolume', 'sellvolume']
+            case AggType.OHLCV_DOL:
+                ohlcv_bars = generate_dollar_bars_nb(ticks, resolution)
+                columns = ['time', 'open', 'high', 'low', 'close', 'volume', 'trades',
+                          'amount', 'updated']
+            case _:
+                raise ValueError("Invalid AggType type. Supported types are 'time', 'volume' and 'dollar'.")
+    finally:
+        # 7. Clear large numpy array as soon as possible
+        del ticks
+    
+    # 8. Create DataFrame and handle timestamps - keeping original working approach
+    ohlcv_df = pd.DataFrame(ohlcv_bars, columns=columns)
+    del ohlcv_bars
+
+    # 9. Use the original timestamp handling that we know works
+    ohlcv_df['time'] = pd.to_datetime(ohlcv_df['time'], unit='s').dt.tz_localize('UTC').dt.tz_convert(zoneNY)
+    ohlcv_df['updated'] = pd.to_datetime(ohlcv_df['updated'], unit="s").dt.tz_localize('UTC').dt.tz_convert(zoneNY)
+    
+    # 10. Round microseconds as in original
+    ohlcv_df['updated'] = ohlcv_df['updated'].dt.round('us')
+    
+    # 11. Set index last, as in original
+    ohlcv_df.set_index('time', inplace=True)
+    
+    return ohlcv_df
+
 def aggregate_trades(symbol: str, trades_df: pd.DataFrame, resolution: int, type: AggType = AggType.OHLCV):
     """"
+    Original replaced by optimized version
     Accepts dataframe with trades keyed by symbol. Preparess dataframe to 
     numpy and calls Numba optimized aggregator for given bar type. (time/volume/dollar)
     """""

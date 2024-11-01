@@ -274,3 +274,146 @@ class StartBarAlign(str, Enum):
     """ 
     ROUND = "round"
     RANDOM = "random"
+
+def compare_dataframes(df1, df2, name1="DataFrame 1", name2="DataFrame 2", check_dtype=True):
+    """
+    Compare two DataFrames and provide detailed analysis of their differences.
+    
+    Parameters:
+    -----------
+    df1, df2 : pandas.DataFrame
+        The DataFrames to compare
+    name1, name2 : str
+        Names to identify the DataFrames in the output
+    check_dtype : bool
+        Whether to check if dtypes match for columns
+        
+    Returns:
+    --------
+    bool
+        True if DataFrames are identical (based on check_dtype parameter)
+    dict
+        Detailed comparison results
+    """
+    results = {
+        'are_equal': False,
+        'shape_match': False,
+        'column_match': False,
+        'index_match': False,
+        'dtype_match': False,
+        'content_match': False,
+        'differences': {}
+    }
+    
+    # Shape comparison
+    if df1.shape != df2.shape:
+        results['differences']['shape'] = {
+            name1: df1.shape,
+            name2: df2.shape
+        }
+    else:
+        results['shape_match'] = True
+    
+    # Column comparison
+    cols1 = set(df1.columns)
+    cols2 = set(df2.columns)
+    if cols1 != cols2:
+        results['differences']['columns'] = {
+            f'unique_to_{name1}': list(cols1 - cols2),
+            f'unique_to_{name2}': list(cols2 - cols1),
+            'common': list(cols1 & cols2)
+        }
+    else:
+        results['column_match'] = True
+    
+    # Index comparison
+    idx1 = set(df1.index)
+    idx2 = set(df2.index)
+    if idx1 != idx2:
+        results['differences']['index'] = {
+            f'unique_to_{name1}': list(idx1 - idx2),
+            f'unique_to_{name2}': list(idx2 - idx1),
+            'common': list(idx1 & idx2)
+        }
+    else:
+        results['index_match'] = True
+    
+    # dtype comparison
+    if check_dtype and results['column_match']:
+        dtype_diff = {}
+        for col in cols1:
+            if df1[col].dtype != df2[col].dtype:
+                dtype_diff[col] = {
+                    name1: str(df1[col].dtype),
+                    name2: str(df2[col].dtype)
+                }
+        if dtype_diff:
+            results['differences']['dtypes'] = dtype_diff
+        else:
+            results['dtype_match'] = True
+    
+    # Content comparison (only for matching columns and indices)
+    if results['column_match'] and results['index_match']:
+        common_cols = list(cols1)
+        common_idx = list(idx1)
+        
+        value_diff = {}
+        for col in common_cols:
+            # Compare values
+            if not df1[col].equals(df2[col]):
+                # Find specific differences
+                mask = df1[col] != df2[col]
+                if any(mask):
+                    diff_indices = df1.index[mask]
+                    value_diff[col] = {
+                        'different_at_indices': list(diff_indices),
+                        'sample_differences': {
+                            str(idx): {
+                                name1: df1.loc[idx, col],
+                                name2: df2.loc[idx, col]
+                            } for idx in list(diff_indices)[:5]  # Show first 5 differences
+                        }
+                    }
+        
+        if value_diff:
+            results['differences']['values'] = value_diff
+        else:
+            results['content_match'] = True
+    
+    # Overall equality
+    results['are_equal'] = all([
+        results['shape_match'],
+        results['column_match'],
+        results['index_match'],
+        results['content_match'],
+        (results['dtype_match'] if check_dtype else True)
+    ])
+    
+    # Print summary
+    print(f"\nComparison Summary of {name1} vs {name2}:")
+    print(f"Shape Match: {results['shape_match']} ({df1.shape} vs {df2.shape})")
+    print(f"Column Match: {results['column_match']}")
+    print(f"Index Match: {results['index_match']}")
+    print(f"Dtype Match: {results['dtype_match']}" if check_dtype else "Dtype Check: Skipped")
+    print(f"Content Match: {results['content_match']}")
+    print(f"\nOverall Equal: {results['are_equal']}")
+    
+    # Print detailed differences if any
+    if not results['are_equal']:
+        print("\nDetailed Differences:")
+        for diff_type, diff_content in results['differences'].items():
+            print(f"\n{diff_type.upper()}:")
+            if diff_type == 'values':
+                print(f"Number of columns with differences: {len(diff_content)}")
+                for col, details in diff_content.items():
+                    print(f"\nColumn '{col}':")
+                    print(f"Number of different values: {len(details['different_at_indices'])}")
+                    print("First few differences:")
+                    for idx, vals in details['sample_differences'].items():
+                        print(f"  At index {idx}:")
+                        print(f"    {name1}: {vals[name1]}")
+                        print(f"    {name2}: {vals[name2]}")
+            else:
+                print(diff_content)
+    
+    return results['are_equal'], results

@@ -17,8 +17,14 @@ from ttools.utils import AggType, fetch_calendar_data, print, print_matching_fil
 from tqdm import tqdm
 import threading
 from typing import List, Union
-from ttools.aggregator_vectorized import aggregate_trades
-
+from ttools.aggregator_vectorized import aggregate_trades, aggregate_trades_optimized
+import numpy as np
+import pandas as pd
+import pyarrow.dataset as ds
+import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
+import math
+import os
 """
 Module for fetching stock data. Supports
 1) cache management
@@ -87,6 +93,8 @@ def convert_dict_to_multiindex_df(tradesResponse, rename_labels = True, keep_sym
         final_df.reset_index(inplace=True) # Reset index to remove MultiIndex levels, making them columns
         final_df.drop(columns=['symbol'], inplace=True) #remove symbol column
         final_df.set_index(timestamp_col, inplace=True) #reindex by timestamp
+        #print index datetime resolution
+        #print(final_df.index.dtype)
 
     return final_df
 
@@ -106,6 +114,28 @@ def filter_trade_df(df: pd.DataFrame, start: datetime = None, end: datetime = No
     Returns:
     df: pd.DataFrame
     """
+    def fast_filter(df, exclude_conditions):
+        # Convert arrays to strings once
+        str_series = df['c'].apply(lambda x: ','.join(x))
+        
+        # Create mask using vectorized string operations
+        mask = np.zeros(len(df), dtype=bool)
+        for cond in exclude_conditions:
+            mask |= str_series.str.contains(cond, regex=False)
+        
+        # Apply filter
+        return df[~mask]
+
+    def vectorized_string_sets(df, exclude_conditions):
+        # Convert exclude_conditions to set for O(1) lookup
+        exclude_set = set(exclude_conditions)
+        
+        # Vectorized operation using sets intersection
+        arrays = df['c'].values
+        mask = np.array([bool(set(arr) & exclude_set) for arr in arrays])
+        
+        return df[~mask]
+
     # 9:30 to 16:00
     if main_session_only:
 
@@ -120,29 +150,49 @@ def filter_trade_df(df: pd.DataFrame, start: datetime = None, end: datetime = No
     #REQUIRED FILTERING
     # Create a mask to filter rows within the specified time range
     if start is not None and end is not None:
-        print(f"filtering {start.time()} {end.time()}")
+        print(f"Trimming {start} {end}")
         if symbol_included:
             mask = (df.index.get_level_values('t') >= start) & \
                 (df.index.get_level_values('t') <= end)
+            df = df[mask]
         else:
-            mask = (df.index >= start) & (df.index <= end)
-
-        # Apply the mask to the DataFrame
-        df = df[mask]
+            df = df.loc[start:end]
 
     if exclude_conditions is not None:
         print(f"excluding {exclude_conditions}")
-        # Create a mask to exclude rows with any of the specified conditions
-        mask = df['c'].apply(lambda x: any(cond in exclude_conditions for cond in x))
-
-        # Filter out the rows with specified conditions
-        df = df[~mask]
+        df = vectorized_string_sets(df, exclude_conditions)
+        print("exclude done")
 
     if minsize is not None:
         print(f"minsize {minsize}")
         #exclude conditions
         df = df[df['s'] >= minsize]
+        print("minsize done")
     return df
+
+def calculate_optimal_workers(file_count, min_workers=4, max_workers=32):
+    """
+    Calculate optimal number of workers based on file count and system resources
+    
+    Rules of thumb:
+    - Minimum of 4 workers to ensure parallelization
+    - Maximum of 32 workers to avoid thread overhead
+    - For 100 files, aim for around 16-24 workers
+    - Scale with CPU count but don't exceed max_workers
+    """
+    cpu_count = os.cpu_count() or 4
+    
+    # Base calculation: 2-4x CPU count for I/O bound tasks
+    suggested_workers = cpu_count * 3
+    
+    # Scale based on file count (1 worker per 4-6 files is a good ratio)
+    files_based_workers = math.ceil(file_count / 5)
+    
+    # Take the smaller of the two suggestions
+    optimal_workers = min(suggested_workers, files_based_workers)
+    
+    # Clamp between min and max workers
+    return max(min_workers, min(optimal_workers, max_workers))
 
 def fetch_daily_stock_trades(symbol, start, end, exclude_conditions=None, minsize=None, main_session_only=True, no_return=False,force_remote=False, rename_labels = False, keep_symbols=False, max_retries=5, backoff_factor=1, data_feed: DataFeed = DataFeed.SIP, verbose = None):
     #doc for this function
@@ -281,7 +331,12 @@ def fetch_trades_parallel(symbol, start_date, end_date, exclude_conditions = EXC
         #speed it up , locals first and then fetches
         s_time = timetime()
         with trade_cache_lock:
-            local_df = pd.concat([pd.read_parquet(f) for _,f in days_from_cache])
+            file_paths = [f for _, f in days_from_cache]
+            dataset = ds.dataset(file_paths, format='parquet')
+            local_df = dataset.to_table().to_pandas()
+            del dataset
+            #original version          
+            #local_df = pd.concat([pd.read_parquet(f) for _,f in days_from_cache])
         final_time = timetime() - s_time
         print(f"{symbol} All {len(days_from_cache)} split files loaded in", final_time, "seconds")
         #the filter is required
@@ -413,7 +468,7 @@ def load_data(symbol: Union[str, List[str]],
         else:
             #neslo by zrychlit, kdyz se zobrazuje pomalu Searching cache - nejaky bottle neck?
             df = fetch_trades_parallel(symbol, start_date, end_date, minsize=minsize, exclude_conditions=exclude_conditions, main_session_only=main_session_only, force_remote=force_remote) #exclude_conditions=['C','O','4','B','7','V','P','W','U','Z','F'])
-            ohlcv_df = aggregate_trades(symbol=symbol, trades_df=df, resolution=resolution, type=agg_type)
+            ohlcv_df = aggregate_trades_optimized(symbol=symbol, trades_df=df, resolution=resolution, type=agg_type, clear_input = True)
 
             ohlcv_df.to_parquet(file_ohlcv, engine='pyarrow')
             print(f"{symbol} Saved to agg_cache", file_ohlcv)    
