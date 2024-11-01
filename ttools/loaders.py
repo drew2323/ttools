@@ -1,5 +1,6 @@
 
 from ctypes import Union
+from ttools import zoneUTC
 from ttools.config import *
 from datetime import datetime
 from alpaca.data.historical import StockHistoricalDataClient
@@ -202,8 +203,8 @@ def fetch_daily_stock_trades(symbol, start, end, exclude_conditions=None, minsiz
     by using force_remote - forcess using remote data always and thus refreshing cache for these dates
         Attributes:
         :param symbol: The stock symbol to fetch trades for.
-        :param start: The start time for the trade data.
-        :param end: The end time for the trade data.
+        :param start: The start time for the trade data, in market timezone.
+        :param end: The end time for the trade data, in market timezone.
         :exclude_conditions: list of string conditions to exclude from the data
         :minsize minimum size of trade to be included in the data
         :no_return: If True, do not return the DataFrame. Used to prepare cached files.
@@ -231,24 +232,34 @@ def fetch_daily_stock_trades(symbol, start, end, exclude_conditions=None, minsiz
     #exists in cache?
     daily_file = f"{symbol}-{str(start.date())}.parquet"
     file_path = TRADE_CACHE / daily_file
-    if file_path.exists() and (not force_remote or not no_return):
+    if file_path.exists() and (not force_remote and not no_return):
         with trade_cache_lock:
             df = pd.read_parquet(file_path)
         print("Loaded from CACHE", file_path)
         df = filter_trade_df(df, start, end, exclude_conditions, minsize, symbol_included=False, main_session_only=main_session_only)
         return df
 
-    day_next = start.date() + timedelta(days=1)
+    #lets create borders of day in UTC as Alpaca has only UTC date
+    start_date = start.date()
+
+    # Create min/max times in NY timezone
+    ny_day_min = zoneNY.localize(datetime.combine(start_date, time.min))
+    ny_day_max = zoneNY.localize(datetime.combine(start_date, time.max))
+
+    # Convert both to UTC
+    utc_day_min = ny_day_min.astimezone(zoneUTC)
+    utc_day_max = ny_day_max.astimezone(zoneUTC)
 
     print("Fetching from remote.")
     client = StockHistoricalDataClient(ACCOUNT1_LIVE_API_KEY, ACCOUNT1_LIVE_SECRET_KEY, raw_data=True)
-    stockTradeRequest = StockTradesRequest(symbol_or_symbols=symbol, start=start.date(), end=day_next, feed=data_feed)
+    stockTradeRequest = StockTradesRequest(symbol_or_symbols=symbol, start=utc_day_min, end=utc_day_max, feed=data_feed)
     last_exception = None
 
     for attempt in range(max_retries):
         try:
             tradesResponse = client.get_stock_trades(stockTradeRequest)
-            print(f"Remote fetched completed.", start.date(), day_next)
+            print(f"Remote fetched completed whole day", start.date())
+            print(f"Exact UTC range fetched: {utc_day_min} - {utc_day_max}")
             if not tradesResponse[symbol]:
                 print(f"EMPTY")
                 return pd.DataFrame()
@@ -256,7 +267,7 @@ def fetch_daily_stock_trades(symbol, start, end, exclude_conditions=None, minsiz
             df = convert_dict_to_multiindex_df(tradesResponse, rename_labels=rename_labels, keep_symbols=keep_symbols)
 
             #if today is market still open, dont cache - also dont cache for IEX feeed
-            if datetime.now().astimezone(zoneNY).date() < day_next or data_feed == DataFeed.IEX:
+            if datetime.now().astimezone(zoneNY).date() < start_date + timedelta(days=1) or data_feed == DataFeed.IEX:
                 print("not saving trade cache, market still open today or IEX datapoint")
                 #ic(datetime.now().astimezone(zoneNY))
                 #ic(day.open, day.close)
@@ -277,7 +288,7 @@ def fetch_daily_stock_trades(symbol, start, end, exclude_conditions=None, minsiz
     print("All attempts to fetch data failed.")
     raise ConnectionError(f"Failed to fetch stock trades after {max_retries} retries. Last exception: {str(last_exception)} and {format_exc()}")
 
-def fetch_trades_parallel(symbol, start_date, end_date, exclude_conditions = EXCLUDE_CONDITIONS, minsize = 100, main_session_only = True, force_remote = False, max_workers=None, no_return = False, verbose = None):
+def fetch_trades_parallel(symbol, start_date, end_date, exclude_conditions = EXCLUDE_CONDITIONS, minsize = None, main_session_only = True, force_remote = False, max_workers=None, no_return = False, verbose = None):
     """
     Fetch trades between ranges.
 

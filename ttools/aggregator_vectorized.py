@@ -29,10 +29,10 @@ def aggregate_trades_optimized(symbol: str, trades_df: pd.DataFrame, resolution:
         del trades_df
 
     # 3. Convert timestamps maintaining exact precision
-    # Convert directly to int64 nanoseconds, then to float seconds
-    unix_timestamps_s = timestamps.view('int64').astype(np.float64) / 1e6
+    # Convert directly to int64 nanoseconds, then to float seconds - there was a problem
+    #unix_timestamps_s = timestamps.view('int64').astype(np.float64) / 1e6
     #original not optimized, in case of issues (5x slower)
-    #unix_timestamps_s = timestamps.astype('datetime64[ns]').astype(np.float64) / 1e9
+    unix_timestamps_s = timestamps.astype('datetime64[ns]').astype(np.float64) / 1e9
 
     # 4. Create ticks array efficiently
     # 3. Pre-allocate array for better memory efficiency
