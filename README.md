@@ -97,6 +97,28 @@ python3 prepare_cache.py --symbols BAC AAPL --day_start 2024-10-14 --day_stop 20
 
 ```
 
+## remote loaders
+
+Remote bars of given resolutions from Alpaca.
+
+Available resolutions Minute, Hours, Day. It s not possible to limit included trades.
+Use only when no precision required.
+
+```python
+from ttools.external_loaders import load_history_bars
+from ttools.config import zoneNY
+from datetime import datetime, time
+from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+
+symbol = "AAPL"
+start_date = zoneNY.localize(datetime(2023, 2, 27, 18, 51, 38))
+end_date = zoneNY.localize(datetime(2023, 4, 27, 21, 51, 39))
+timeframe = TimeFrame(amount=1,unit=TimeFrameUnit.Minute)
+
+df = load_history_bars(symbol, start_date, end_date, timeframe, main_session_only=True)
+df.loc[('AAPL',)]
+```
+
 # vbtutils
 
 Contains helpers for vbtpro

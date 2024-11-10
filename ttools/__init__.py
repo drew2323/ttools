@@ -2,3 +2,4 @@ from .vbtutils import AnchoredIndicator, create_mask_from_window, isrising, isfa
 from .vbtindicators import register_custom_inds
 from .utils import AggType, zoneNY, zonePRG, zoneUTC
 from .loaders import load_data, prepare_trade_cache
+from .external_loaders import load_history_bars
