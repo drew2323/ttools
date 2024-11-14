@@ -323,10 +323,7 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
                 sell_volume = 0
                 
                 # Increment bar time if splitting a trade
-                if tick_volume > 0: # If there's remaining volume in the trade, set bar time slightly later
-                    bar_time = tick_time + 1e-6
-                else:
-                    bar_time = tick_time # Otherwise, set bar time to the tick time
+                bar_time = bar_time + 1e-6
 
         prev_price = price
 
