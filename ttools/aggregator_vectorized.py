@@ -257,7 +257,7 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
         price = tick[1]
         tick_volume = tick[2]
         tick_day = np.floor(tick_time / 86400)  # Calculate the day of the current tick
-
+        splitted = False
         # Check if the new tick is from a different day, then close the current bar
         if tick_day != current_day:
             if trades_count > 0:
@@ -321,9 +321,15 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
                 remaining_volume = volume_per_bar
                 buy_volume = 0
                 sell_volume = 0
-                
-                # Increment bar time if splitting a trade
-                bar_time = bar_time + 1e-6
+
+                #if the same trade opened the bar (we are splitting trade to more bars)
+                #first splitted identified by time, next by flag
+                if bar_time == tick_time or splitted:
+                    bar_time = bar_time + 1e-6
+                    splitted = True
+                else:
+                    bar_time = tick_time
+                    splitted = False
 
         prev_price = price
 
