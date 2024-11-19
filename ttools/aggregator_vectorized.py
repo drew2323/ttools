@@ -50,11 +50,11 @@ def aggregate_trades_optimized(symbol: str, trades_df: pd.DataFrame, resolution:
             case AggType.OHLCV:
                 ohlcv_bars = generate_time_bars_nb(ticks, resolution)
                 columns = ['time', 'open', 'high', 'low', 'close', 'volume', 'trades', 
-                          'updated', 'vwap', 'buyvolume', 'sellvolume']
+                          'updated', 'vwap', 'buyvolume', 'sellvolume', 'buytrades', 'selltrades']
             case AggType.OHLCV_VOL:
                 ohlcv_bars = generate_volume_bars_nb(ticks, resolution)
                 columns = ['time', 'open', 'high', 'low', 'close', 'volume', 'trades',
-                          'updated', 'buyvolume', 'sellvolume']
+                          'updated', 'buyvolume', 'sellvolume', 'buytrades', 'selltrades']
             case AggType.OHLCV_DOL:
                 ohlcv_bars = generate_dollar_bars_nb(ticks, resolution)
                 columns = ['time', 'open', 'high', 'low', 'close', 'volume', 'trades',
@@ -116,9 +116,13 @@ def aggregate_trades(symbol: str, trades_df: pd.DataFrame, resolution: int, type
         columns.append('vwap')
         columns.append('buyvolume')
         columns.append('sellvolume')
+        columns.append('buytrades')
+        columns.append('selltrades')
     if type == AggType.OHLCV_VOL:
         columns.append('buyvolume')
         columns.append('sellvolume')
+        columns.append('buytrades')
+        columns.append('selltrades')
     ohlcv_df = pd.DataFrame(ohlcv_bars, columns=columns)
     ohlcv_df['time'] = pd.to_datetime(ohlcv_df['time'], unit='s').dt.tz_localize('UTC').dt.tz_convert(zoneNY)
     #print(ohlcv_df['updated'])
@@ -246,12 +250,14 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
     close_price = ticks[0, 1]
     volume = 0
     trades_count = 0
+    trades_buy_count = 0
+    trades_sell_count = 0
     current_day = np.floor(ticks[0, 0] / 86400)  # Calculate the initial day from the first tick timestamp
     bar_time = ticks[0, 0]  # Initialize bar time with the time of the first tick
     buy_volume = 0  # Volume of buy trades
     sell_volume = 0  # Volume of sell trades
     prev_price = ticks[0, 1]  # Initialize previous price for the first tick
-
+    last_tick_up = None
     for tick in ticks:
         tick_time = tick[0]
         price = tick[1]
@@ -261,7 +267,7 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
         # Check if the new tick is from a different day, then close the current bar
         if tick_day != current_day:
             if trades_count > 0:
-                ohlcv_bars.append([bar_time, open_price, high_price, low_price, close_price, volume, trades_count, tick_time, buy_volume, sell_volume])
+                ohlcv_bars.append([bar_time, open_price, high_price, low_price, close_price, volume, trades_count, tick_time, buy_volume, sell_volume, trades_buy_count, trades_sell_count])
             # Reset for the new day using the current tick data
             open_price = price
             high_price = price
@@ -269,6 +275,8 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
             close_price = price
             volume = 0
             trades_count = 0
+            trades_buy_count = 0
+            trades_sell_count = 0
             remaining_volume = volume_per_bar
             current_day = tick_day
             bar_time = tick_time  # Update bar time to the current tick time
@@ -291,8 +299,21 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
                 # Update buy and sell volumes
                 if price > prev_price:
                     buy_volume += tick_volume
+                    trades_buy_count += 1
+                    last_tick_up = True
                 elif price < prev_price:
                     sell_volume += tick_volume
+                    trades_sell_count += 1
+                    last_tick_up = False
+                else: #same price, use last direction
+                    if last_tick_up is None:
+                        pass
+                    elif last_tick_up:
+                        buy_volume += tick_volume
+                        trades_buy_count += 1
+                    else:
+                        sell_volume += tick_volume
+                        trades_sell_count += 1
                 
                 tick_volume = 0
             else:
@@ -305,11 +326,24 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
                 # Update buy and sell volumes
                 if price > prev_price:
                     buy_volume += volume_to_add
+                    trades_buy_count += 1
+                    last_tick_up = True
                 elif price < prev_price:
                     sell_volume += volume_to_add
+                    trades_sell_count += 1
+                    last_tick_up = False
+                else: #same price, use last direction
+                    if last_tick_up is None:
+                        pass
+                    elif last_tick_up:
+                        buy_volume += volume_to_add
+                        trades_buy_count += 1
+                    else:
+                        sell_volume += volume_to_add
+                        trades_sell_count += 1
                 
                 # Append the completed bar to the list
-                ohlcv_bars.append([bar_time, open_price, high_price, low_price, close_price, volume, trades_count, tick_time, buy_volume, sell_volume])
+                ohlcv_bars.append([bar_time, open_price, high_price, low_price, close_price, volume, trades_count, tick_time, buy_volume, sell_volume, trades_buy_count, trades_sell_count])
 
                 # Reset bar values for the new bar using the current tick data
                 open_price = price
@@ -318,6 +352,8 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
                 close_price = price
                 volume = 0
                 trades_count = 0
+                trades_buy_count = 0
+                trades_sell_count = 0
                 remaining_volume = volume_per_bar
                 buy_volume = 0
                 sell_volume = 0
@@ -335,7 +371,7 @@ def generate_volume_bars_nb(ticks, volume_per_bar):
 
     # Add the last bar if it contains any trades
     if trades_count > 0:
-        ohlcv_bars.append([bar_time, open_price, high_price, low_price, close_price, volume, trades_count, tick_time, buy_volume, sell_volume])
+        ohlcv_bars.append([bar_time, open_price, high_price, low_price, close_price, volume, trades_count, tick_time, buy_volume, sell_volume, trades_buy_count, trades_sell_count])
 
     return np.array(ohlcv_bars)
 
@@ -359,13 +395,15 @@ def generate_time_bars_nb(ticks, resolution):
     close_price = 0
     volume = 0
     trades_count = 0
+    trades_buy_count = 0
+    trades_sell_count = 0
     vwap_cum_volume_price = 0  # Cumulative volume * price
     cum_volume = 0  # Cumulative volume for VWAP
     buy_volume = 0  # Volume of buy trades
     sell_volume = 0  # Volume of sell trades
     prev_price = ticks[0, 1]  # Initialize previous price for the first tick
     prev_day = np.floor(ticks[0, 0] / 86400)  # Calculate the initial day from the first tick timestamp
-    
+    last_tick_up = None
     for tick in ticks:
         curr_time = tick[0] #updated time
         tick_time = np.floor(tick[0] / resolution) * resolution
@@ -382,7 +420,7 @@ def generate_time_bars_nb(ticks, resolution):
         if tick_time != start_time + current_bar_index * resolution:
             if current_bar_index >= 0 and trades_count > 0:  # Save the previous bar if trades happened
                 vwap = vwap_cum_volume_price / cum_volume if cum_volume > 0 else 0
-                ohlcv_bars.append([start_time + current_bar_index * resolution, open_price, high_price, low_price, close_price, volume, trades_count, curr_time, vwap, buy_volume, sell_volume])
+                ohlcv_bars.append([start_time + current_bar_index * resolution, open_price, high_price, low_price, close_price, volume, trades_count, curr_time, vwap, buy_volume, sell_volume, trades_buy_count, trades_sell_count])
             
             # Reset bar values
             current_bar_index = int((tick_time - start_time) / resolution)
@@ -391,6 +429,8 @@ def generate_time_bars_nb(ticks, resolution):
             low_price = price
             volume = 0
             trades_count = 0
+            trades_buy_count = 0
+            trades_sell_count = 0
             vwap_cum_volume_price = 0
             cum_volume = 0
             buy_volume = 0
@@ -408,15 +448,28 @@ def generate_time_bars_nb(ticks, resolution):
         # Update buy and sell volumes
         if price > prev_price:
             buy_volume += tick_volume
+            trades_buy_count += 1
+            last_tick_up = True
         elif price < prev_price:
             sell_volume += tick_volume
+            trades_sell_count += 1
+            last_tick_up = False
+        else: #same price, use last direction
+            if last_tick_up is None:
+                pass
+            elif last_tick_up:
+                buy_volume += tick_volume
+                trades_buy_count += 1
+            else:
+                sell_volume += tick_volume
+                trades_sell_count += 1
         
         prev_price = price
 
     # Save the last processed bar
     if trades_count > 0:
         vwap = vwap_cum_volume_price / cum_volume if cum_volume > 0 else 0
-        ohlcv_bars.append([start_time + current_bar_index * resolution, open_price, high_price, low_price, close_price, volume, trades_count, curr_time, vwap, buy_volume, sell_volume])
+        ohlcv_bars.append([start_time + current_bar_index * resolution, open_price, high_price, low_price, close_price, volume, trades_count, curr_time, vwap, buy_volume, sell_volume, trades_buy_count, trades_sell_count])
     
     return np.array(ohlcv_bars)
 
