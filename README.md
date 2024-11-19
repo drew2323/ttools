@@ -16,6 +16,9 @@ Modules:
 - remotely fetches daily trade data
 - manages trade cache (daily trade files per symbol) and aggregation cache (per symbola and requested period)
 - numba compiled aggregator for required output (time based, dollars, volume bars, renkos...).
+- additional columns calculated from tick data and included in bars
+  - buyvolume, sellvolume - total amount of volume triggered by aggressive orders (estimated by Lee-Ready algorithm)
+  - buytrades, selltrades - total amount of trades in each bar grouped by side of aggregsive orders
 
 Detailed examples in [tests/data_loader_tryme.ipynb](tests/data_loader_tryme.ipynb)
 
