@@ -793,16 +793,216 @@ class LibraryTradingModel:
         """
 
 
+        def evaluate_directional_accuracy(results, predictions_proba, confidence_thresholds={'high': 0.7, 'medium': 0.5}):
+            """
+            Evaluate directional prediction accuracy with confidence thresholds.
+            
+            Parameters:
+            - results: DataFrame with 'predicted' and 'actual' columns
+            - predictions_proba: probability predictions for each class
+            - confidence_thresholds: dict with threshold levels
+            
+            Returns:
+            - Dictionary containing evaluation metrics and data for visualization
+            """
+            import numpy as np
+            import pandas as pd
+            
+            # Get number of classes
+            n_classes = predictions_proba.shape[1]
+            
+            # Create DataFrame with probabilities
+            class_names = [f'class_{i}' for i in range(n_classes)]
+            prob_df = pd.DataFrame(predictions_proba, columns=class_names)
+            prob_df.index = results.index
+            
+            # Extract extreme class probabilities
+            neg_probs = prob_df['class_0']  # highest negative returns
+            pos_probs = prob_df[f'class_{n_classes-1}']  # highest positive returns
+            
+            # Determine directional predictions based on confidence thresholds
+            directional_preds = pd.Series(index=results.index, dtype='str')
+            directional_preds[neg_probs >= confidence_thresholds['high']] = 'strong_negative'
+            directional_preds[pos_probs >= confidence_thresholds['high']] = 'strong_positive'
+            directional_preds[neg_probs.between(confidence_thresholds['medium'], confidence_thresholds['high'])] = 'weak_negative'
+            directional_preds[pos_probs.between(confidence_thresholds['medium'], confidence_thresholds['high'])] = 'weak_positive'
+            directional_preds[directional_preds.isnull()] = 'neutral'
+            
+            # Determine actual directions
+            actual_dirs = pd.Series(index=results.index, dtype='str')
+            actual_dirs[results['actual'] == 0] = 'negative'
+            actual_dirs[results['actual'] == n_classes-1] = 'positive'
+            actual_dirs[actual_dirs.isnull()] = 'neutral'
+            
+            # Calculate penalties
+            penalties = pd.Series(index=results.index, dtype='float')
+            
+            # Define penalty weights
+            penalty_matrix = {
+                ('strong_negative', 'positive'): -2.0,
+                ('strong_positive', 'negative'): -2.0,
+                ('weak_negative', 'positive'): -1.5,
+                ('weak_positive', 'negative'): -1.5,
+                ('neutral', 'positive'): -0.5,
+                ('neutral', 'negative'): -0.5,
+                ('strong_negative', 'negative'): 1.0,
+                ('strong_positive', 'positive'): 1.0,
+                ('weak_negative', 'negative'): 0.5,
+                ('weak_positive', 'positive'): 0.5,
+            }
+            
+            # Apply penalties
+            for pred_dir, actual_dir in penalty_matrix.keys():
+                mask = (directional_preds == pred_dir) & (actual_dirs == actual_dir)
+                penalties[mask] = penalty_matrix[(pred_dir, actual_dir)]
+            
+            # Fill remaining combinations with neutral penalty (0)
+            penalties.fillna(0, inplace=True)
+            
+            # Calculate metrics
+            metrics = {
+                'total_score': penalties.sum(),
+                'avg_score': penalties.mean(),
+                'high_conf_accuracy': (
+                    ((directional_preds == 'strong_negative') & (actual_dirs == 'negative')) |
+                    ((directional_preds == 'strong_positive') & (actual_dirs == 'positive'))
+                ).mean(),
+                'med_conf_accuracy': (
+                    ((directional_preds == 'weak_negative') & (actual_dirs == 'negative')) |
+                    ((directional_preds == 'weak_positive') & (actual_dirs == 'positive'))
+                ).mean(),
+                'confusion_data': pd.crosstab(directional_preds, actual_dirs),
+                'confidence_data': {
+                    'correct_neg': neg_probs[(directional_preds == 'strong_negative') & (actual_dirs == 'negative')],
+                    'incorrect_neg': neg_probs[(directional_preds == 'strong_negative') & (actual_dirs != 'negative')],
+                    'correct_pos': pos_probs[(directional_preds == 'strong_positive') & (actual_dirs == 'positive')],
+                    'incorrect_pos': pos_probs[(directional_preds == 'strong_positive') & (actual_dirs != 'positive')]
+                }
+            }
+            
+            return metrics
 
+        def plot_directional_analysis(metrics, iteration_num):
+            """
+            Create visualization plots for directional analysis results
+            
+            Parameters:
+            - metrics: Dictionary containing evaluation metrics from evaluate_directional_accuracy
+            - iteration_num: Current iteration number
+            """
+            import matplotlib.pyplot as plt
+            import seaborn as sns
+            
+            # Create a figure with subplots
+            fig = plt.figure(figsize=(15, 10))
+            
+            # 1. Confusion Matrix Heatmap
+            plt.subplot(2, 2, 1)
+            sns.heatmap(metrics['confusion_data'], 
+                        annot=True, 
+                        fmt='d',
+                        cmap='YlOrRd')
+            plt.title(f'Directional Prediction Confusion Matrix\nIteration {iteration_num}')
+            
+            # 2. Confidence Distribution Plot
+            plt.subplot(2, 2, 2)
+            
+            # Plot correct predictions
+            if len(metrics['confidence_data']['correct_neg']) > 0:
+                sns.kdeplot(data=metrics['confidence_data']['correct_neg'], 
+                        label='Correct Negative', color='blue', alpha=0.6)
+            if len(metrics['confidence_data']['correct_pos']) > 0:
+                sns.kdeplot(data=metrics['confidence_data']['correct_pos'], 
+                        label='Correct Positive', color='green', alpha=0.6)
+            
+            # Plot incorrect predictions
+            if len(metrics['confidence_data']['incorrect_neg']) > 0:
+                sns.kdeplot(data=metrics['confidence_data']['incorrect_neg'], 
+                        label='Incorrect Negative', color='red', alpha=0.6)
+            if len(metrics['confidence_data']['incorrect_pos']) > 0:
+                sns.kdeplot(data=metrics['confidence_data']['incorrect_pos'], 
+                        label='Incorrect Positive', color='orange', alpha=0.6)
+            
+            plt.title('Confidence Distribution by Prediction Outcome')
+            plt.xlabel('Prediction Confidence')
+            plt.ylabel('Density')
+            plt.legend()
+            
+            # 3. Accuracy Metrics Bar Plot
+            plt.subplot(2, 2, 3)
+            metrics_to_plot = {
+                'High Conf\nAccuracy': metrics['high_conf_accuracy'],
+                'Med Conf\nAccuracy': metrics['med_conf_accuracy'],
+                'Overall\nScore': metrics['avg_score']
+            }
+            
+            plt.bar(metrics_to_plot.keys(), metrics_to_plot.values())
+            plt.title('Performance Metrics')
+            plt.ylabel('Score')
+            
+            # Add text annotations
+            plt.text(0.1, 0.95, f'Total Score: {metrics["total_score"]:.2f}', 
+                    transform=plt.gca().transAxes)
+            
+            plt.show()
+            return
 
-
-
-
-
-        class_names = [f'class_{i}' for i in range(len(predictions_proba[0]))]
+        class_names = [f'class_{c}' for c in model.classes_]
+        #class_names = [f'class_{i}' for i in range(len(predictions_proba[0]))]
+        print(class_names)
         prob_df = pd.DataFrame(predictions_proba, columns=class_names)
         prob_df.index = results.index
 
+        # # Verification step
+        # def verify_xgb_predictions(model, predictions, predictions_proba):
+        #     # Get predicted class from probabilities
+        #     pred_from_proba = model.classes_[np.argmax(predictions_proba, axis=1)]
+            
+        #     # Check if they match
+        #     matches = (predictions == pred_from_proba)
+        #     if not np.all(matches):
+        #         print("Warning: Predictions don't match probability argmax")
+        #         print("Mismatched indices:", np.where(~matches)[0])
+        #         print("\nSample of mismatches:")
+        #         mismatch_idx = np.where(~matches)[0][:5]  # Show first 5 mismatches
+        #         for idx in mismatch_idx:
+        #             print(f"\nIndex {idx}:")
+        #             print(f"Prediction: {predictions[idx]}")
+        #             print(f"Prediction from proba: {pred_from_proba[idx]}")
+        #             print("Probabilities:")
+        #             for c, p in zip(model.classes_, predictions_proba[idx]):
+        #                 print(f"class_{c}: {p:.3f}")
+        #     else:
+        #         print("✓ Predictions match probability argmax")
+            
+        #     return pred_from_proba
+
+        # # Run verification
+        # pred_from_proba = verify_xgb_predictions(model, results["predicted"], predictions_proba)
+
+        # # You can add the verification to results if needed
+        # results['pred_from_proba'] = pred_from_proba
+
+        # # Print sample to verify
+        # print("\nResults sample:")
+        # print(results.head())
+        # print("\nProbabilities sample:")
+        # print(prob_df.head())
+
+
+        # Add directional analysis
+        dir_metrics = evaluate_directional_accuracy(
+            results, 
+            predictions_proba,
+            confidence_thresholds={'high': 0.6, 'medium': 0.3}
+        )
+
+        print(dir_metrics)
+
+        plot_directional_analysis(
+            metrics=dir_metrics,
+            iteration_num=iteration_num)
+        
         analysis_df = analyze_return_distribution(prob_df, results["actual"])
         fig = plot_distribution_analysis(prob_df, analysis_df, results["actual"])
         stats = calculate_signal_statistics(analysis_df, results["actual"])
