@@ -357,6 +357,7 @@ def fetch_trades_parallel(symbol, start_date, end_date, exclude_conditions = EXC
     #do this only for remotes
     if len(days_from_remote) > 0:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures_with_date = []
             #for single_date in (start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)):
             for market_day in tqdm(days_from_remote, desc=f"{symbol} Remote fetching"):
                 #start = datetime.combine(single_date, time(9, 30))  # Market opens at 9:30 AM
@@ -379,14 +380,19 @@ def fetch_trades_parallel(symbol, start_date, end_date, exclude_conditions = EXC
                 end = min(end_date, max_day_time)
 
                 future = executor.submit(fetch_daily_stock_trades, symbol, start, end, exclude_conditions, minsize, main_session_only, no_return, force_remote)
-                futures.append(future)
+                futures_with_date.append((future,start))
             
-            for future in tqdm(futures, desc=f"{symbol} Receiving trades"):
+            results_with_dates = []
+            for future, date in tqdm(futures_with_date, desc=f"{symbol} Receiving trades"):
                 try:
                     result = future.result()
-                    results.append(result)
+                    if result is not None:
+                        results_with_dates.append((result,date))
                 except Exception as e:
                     print(f"Error fetching data for a day: {e}")
+            # Sort by date before concatenating
+            results_with_dates.sort(key=lambda x: x[1])
+            results = [r for r, _ in results_with_dates]
 
         if not no_return:
             # Batch concatenation to improve speed
