@@ -458,6 +458,52 @@ class BaseFeatureBuilder(ABC):
         """Creates target variables"""
         pass
 
+    def remove_crossday_targets(self, target: pd.Series, df: pd.DataFrame, future_bars: int, replace_value = None) -> pd.Series:
+        """
+        Remove targets that cross day boundaries for intraday trading.
+        
+        Parameters:
+        -----------
+        target : pd.Series
+            Original target series with log returns
+        df : pd.DataFrame
+            Original dataframe with datetime index
+        future_bars : int
+            Number of forward bars used for target calculation
+        replace_value : float, optional
+            Value to replace cross-day targets with (for example class 4 means zero return)
+            
+        Returns:
+        --------
+        pd.Series
+            Target series with cross-day targets set to NaN
+        """        
+        # Get dates from index
+        dates = df.index.date
+        
+        # Create mask for same-day targets
+        future_dates = df.index.date[future_bars:]
+        current_dates = dates[:-future_bars]
+        same_day_mask = (future_dates == current_dates)
+        
+        # Pad the mask to match original length
+        full_mask = np.pad(same_day_mask, (0, future_bars), constant_values=False)
+        
+        # Apply mask to keep only intraday targets
+        target_cleaned = target.copy()
+        target_cleaned[~full_mask] = np.nan
+        
+        if replace_value is not None:
+            target_cleaned[~full_mask] = replace_value
+            #print number of replaced values
+            print(f"Number of replaced values: {len(target_cleaned[~full_mask])}") 
+
+        # Calculate percentage of valid targets
+        valid_targets_pct = (target_cleaned.notna().sum() / len(target_cleaned)) * 100
+        print(f"Percentage of valid intraday targets: {valid_targets_pct:.2f}%")
+
+        return target_cleaned
+
 class LibraryTradingModel:
     """Main trading model implementation with configuration-based setup"""
     
