@@ -27,6 +27,31 @@ from traceback import format_exc
 from scipy.stats import entropy
 import pickle
 from itertools import zip_longest
+import subprocess
+
+
+def set_gpu_params(model):
+    # Check GPU and create classifier
+    has_gpu = check_gpu()
+    if has_gpu:
+        print("GPU is available! Using GPU acceleration.")
+        gpu_params = {
+            'tree_method': 'gpu_hist',
+            'predictor': 'gpu_predictor',
+            'gpu_id': 0
+        }
+        model.set_params(**gpu_params)
+    else:
+        print("GPU not found. Using CPU.")
+    return model
+
+def check_gpu() -> bool:
+    """Check if GPU is available via nvidia-smi"""
+    try:
+        subprocess.check_output('nvidia-smi')
+        return True
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
 
 #https://claude.ai/chat/dc62f18b-f293-4c7e-890d-1e591ce78763
 #skew of return prediction
@@ -996,6 +1021,8 @@ class LibraryTradingModel:
                 else:
                     print("Using default hyperparameters",self.def_params)
                     model.set_params(**self.def_params)
+                    
+                model = set_gpu_params(model)
 
                 #balance unbalanced classes, works for binary:logistics
                 if self.config.n_classes == 2:
@@ -1009,6 +1036,8 @@ class LibraryTradingModel:
             else:
                 print("Using PROVIDED MODEL and SCALER")
                 model = self.use_model
+
+                model = set_gpu_params(model)
             
             print("TEST-----")
             if self.config.test_on_train:
