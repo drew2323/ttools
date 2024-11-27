@@ -917,8 +917,8 @@ class LibraryTradingModel:
                     X_fold_train, 
                     y_fold_train,
                     eval_set=[(X_fold_val, y_fold_val)],
-                    early_stopping_rounds=50,
-                    verbose=10
+                    #early_stopping_rounds=50,
+                    verbose=2
                 )
                 
                 # Calculate score
