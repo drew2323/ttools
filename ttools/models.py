@@ -916,7 +916,7 @@ class LibraryTradingModel:
                     y_fold_train,
                     eval_set=[(X_fold_val, y_fold_val)],
                     early_stopping_rounds=50,
-                    verbose=False
+                    verbose=10
                 )
                 
                 # Calculate score
@@ -1023,6 +1023,8 @@ class LibraryTradingModel:
                     model.set_params(**self.def_params)
                     
                 model = set_gpu_params(model)
+
+                model.set_params(verbosity=2)
 
                 #balance unbalanced classes, works for binary:logistics
                 if self.config.n_classes == 2:

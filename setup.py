@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ttools',
-    version='0.7.92',
+    version='0.7.93',
     packages=find_packages(),
     install_requires=[
         # list your dependencies here
