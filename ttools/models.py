@@ -902,7 +902,9 @@ class LibraryTradingModel:
                         model.set_params(num_class=self.config.n_classes)
                 else:
                     model = XGBRegressor(**params)
-                
+
+                model = set_gpu_params(model)
+
                 # Handle class imbalance for binary classification
                 if self.config.n_classes == 2:
                     n_0 = sum(y_fold_train == 0)
