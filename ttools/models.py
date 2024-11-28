@@ -470,6 +470,7 @@ class ModelConfig:
     forward_bars: int = 5
     target_threshold: float = 1.005 # upper pct threshold for target (1.005 = up by 0.5%)
     target_direction: str = "rise"
+    target_returns_ewm: int = 10
     target_reversal_threshold: float = 0.3 #How much retracement to allow 0.3=30%retracement terminates the window
     target_min_bars: int = 2 ## minimum bars to consider a valid movement
     target_min_profit_threshold: float = 0.0015  # 0.15% minimum profit threshold to maintain
