@@ -1027,7 +1027,7 @@ class LibraryTradingModel:
                     
                 model = set_gpu_params(model)
 
-                model.set_params(verbosity=2)
+                model.set_params(verbosity=1)
 
                 #balance unbalanced classes, works for binary:logistics
                 if self.config.n_classes == 2:
